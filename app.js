@@ -1,11 +1,12 @@
 // Wind Dashboard App
 
-// Stormglass API key voor getijden (gratis: 10 requests/dag)
-// Vraag een gratis key aan op: https://stormglass.io
-const STORMGLASS_API_KEY = '7a8818f2-e8bc-11f0-a0d3-0242ac130003-7a88196a-e8bc-11f0-a0d3-0242ac130003';
-
 // Buienradar API - gratis KNMI meetstationdata, geen key nodig
 const BUIENRADAR_API_URL = 'https://data.buienradar.nl/2.0/feed/json';
+
+// Getijden API - optioneel via environment/localStorage
+// Voor nu: tijdelijk uitgeschakeld tot serverless proxy beschikbaar is
+// De app werkt volledig zonder getijden, deze worden later toegevoegd
+const TIDE_API_ENABLED = false;
 
 // Huidige spot (default: ijmuiden)
 let currentSpot = null;
@@ -381,9 +382,9 @@ function updateGearPanelContent() {
     });
 }
 
-// Getijden cache (24 uur geldig)
-const TIDE_CACHE_KEY = 'tideCache';
-const TIDE_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 uur in ms
+// Getijden cache (6 uur geldig - RWS data verandert niet vaak)
+const TIDE_CACHE_KEY = 'tideCacheRWS';
+const TIDE_CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 uur in ms
 
 // Gecachte getijdendata ophalen
 function getTideCache() {
@@ -394,7 +395,6 @@ function getTideCache() {
         const { timestamp, data } = JSON.parse(cached);
         const now = Date.now();
 
-        // Check of cache nog geldig is (24 uur)
         if (now - timestamp > TIDE_CACHE_DURATION) {
             localStorage.removeItem(TIDE_CACHE_KEY);
             return null;
@@ -420,9 +420,90 @@ function setTideCache(data) {
     }
 }
 
+// Hoog- en laagwater extremen berekenen uit RWS waterhoogte data
+function findTideExtremes(tidePoints) {
+    const extremes = [];
+    if (!tidePoints || tidePoints.length < 3) return extremes;
+
+    for (let i = 1; i < tidePoints.length - 1; i++) {
+        const prev = tidePoints[i - 1].value;
+        const curr = tidePoints[i].value;
+        const next = tidePoints[i + 1].value;
+
+        // Lokaal maximum (hoogwater)
+        if (curr > prev && curr > next) {
+            extremes.push({
+                type: 'high',
+                time: tidePoints[i].dateTime,
+                height: curr
+            });
+        }
+        // Lokaal minimum (laagwater)
+        else if (curr < prev && curr < next) {
+            extremes.push({
+                type: 'low',
+                time: tidePoints[i].dateTime,
+                height: curr
+            });
+        }
+    }
+
+    return extremes;
+}
+
+// Getijden ophalen van RWS Waterinfo API voor een spot
+async function fetchTideDataForSpot(spot) {
+    if (!spot.rwsTideLocation) {
+        console.log(`Geen RWS locatie voor ${spot.name}`);
+        return null;
+    }
+
+    const now = new Date();
+    const start = new Date(now.getTime() - 6 * 60 * 60 * 1000); // 6 uur terug
+    const end = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 uur vooruit
+
+    const params = new URLSearchParams({
+        mapType: 'astronomische-getij',
+        locationCode: spot.rwsTideLocation,
+        getijReference: 'NAP',
+        timeZone: 'W. Europe Standard Time',
+        startDate: start.toISOString(),
+        endDate: end.toISOString()
+    });
+
+    try {
+        const response = await fetch(`${RWS_TIDE_API_URL}?${params}`, {
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            console.error(`RWS API fout voor ${spot.name}:`, response.status);
+            return null;
+        }
+
+        const data = await response.json();
+
+        // RWS geeft data als array van {dateTime, value} in cm
+        if (data && data.length > 0) {
+            const extremes = findTideExtremes(data);
+            console.log(`Getijden opgehaald voor ${spot.name}:`, extremes.length, 'extremen');
+            return { data: extremes, raw: data };
+        }
+
+        return null;
+    } catch (error) {
+        console.error(`Fout bij ophalen getijden voor ${spot.name}:`, error);
+        return null;
+    }
+}
+
 // Getijden ophalen voor alle spots (of uit cache)
 async function fetchAllTideData() {
-    if (!STORMGLASS_API_KEY) {
+    // Getijden tijdelijk uitgeschakeld
+    if (!TIDE_API_ENABLED) {
+        console.log('Getijden API is uitgeschakeld');
         return {};
     }
 
@@ -435,46 +516,20 @@ async function fetchAllTideData() {
 
     console.log('Getijdendata ophalen van API voor alle spots...');
 
-    const now = new Date();
-    // Haal 48 uur op zodat we altijd voldoende data hebben
-    const start = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString(); // 12 uur terug voor prevExtreme
-    const end = new Date(now.getTime() + 36 * 60 * 60 * 1000).toISOString(); // 36 uur vooruit
-
     const tideDataBySpot = {};
 
     // Haal voor elke spot de getijden op
     for (const spot of SPOTS) {
-        try {
-            const response = await fetch(
-                `https://api.stormglass.io/v2/tide/extremes/point?lat=${spot.lat}&lng=${spot.lon}&start=${start}&end=${end}`,
-                {
-                    headers: {
-                        'Authorization': STORMGLASS_API_KEY
-                    }
-                }
-            );
-
-            if (response.ok) {
-                const data = await response.json();
-                tideDataBySpot[spot.id] = data;
-                console.log(`Getijden opgehaald voor ${spot.name}`);
-            } else {
-                console.error(`Stormglass API fout voor ${spot.name}:`, response.status);
-                tideDataBySpot[spot.id] = null;
-            }
-
+        if (spot.rwsTideLocation) {
+            tideDataBySpot[spot.id] = await fetchTideDataForSpot(spot);
             // Kleine delay om rate limiting te voorkomen
-            await new Promise(r => setTimeout(r, 200));
-
-        } catch (error) {
-            console.error(`Fout bij ophalen getijden voor ${spot.name}:`, error);
-            tideDataBySpot[spot.id] = null;
+            await new Promise(r => setTimeout(r, 300));
         }
     }
 
     // Sla op in cache
     setTideCache(tideDataBySpot);
-    console.log('Getijdendata gecached voor 24 uur');
+    console.log('Getijdendata gecached voor 6 uur');
 
     return tideDataBySpot;
 }
@@ -493,9 +548,15 @@ function updateTideDisplay() {
     const tideDirection = document.getElementById('tideDirection');
     const tideTimes = document.getElementById('tideTimes');
 
-    if (!STORMGLASS_API_KEY) {
+    if (!TIDE_API_ENABLED) {
         tideDirection.textContent = '--';
-        tideTimes.textContent = 'Geen API key';
+        tideTimes.textContent = 'Binnenkort';
+        return;
+    }
+
+    if (!currentSpot || !currentSpot.rwsTideLocation) {
+        tideDirection.textContent = '--';
+        tideTimes.textContent = 'Geen data';
         return;
     }
 

@@ -69,7 +69,8 @@ const SPOTS = [
         location: 'Noord-Holland',
         lat: 52.4963,
         lon: 4.6025,
-        buienradarId: 6225, // Meetstation IJmuiden (Wijk aan Zee station heeft geen winddata)
+        buienradarId: 6225, // Meetstation IJmuiden
+        rwsTideLocation: 'IJmuiden(IJMDSS)', // RWS getijden meetpunt
         type: 'strand',
         bestWind: ['NW', 'W', 'ZW'],
         description: 'Breed zandstrand, goed voor beginners bij weinig wind',
@@ -82,6 +83,7 @@ const SPOTS = [
         lat: 52.4647,
         lon: 4.5917,
         buienradarId: 6225, // Meetstation IJmuiden
+        rwsTideLocation: 'IJmuiden(IJMDSS)',
         type: 'strand',
         bestWind: ['NW', 'W', 'ZW'],
         description: 'Populaire spot bij zuidpier, let op stroming bij havenmond',
@@ -94,6 +96,7 @@ const SPOTS = [
         lat: 51.9775,
         lon: 4.1231,
         buienradarId: 6330, // Meetstation Hoek van Holland
+        rwsTideLocation: 'Hoek van Holland(HOlvhld)',
         type: 'strand',
         bestWind: ['ZW', 'W', 'NW'],
         description: 'Groot strand, goede golven bij westenwind',
@@ -105,7 +108,8 @@ const SPOTS = [
         location: 'Zuid-Holland',
         lat: 51.9483,
         lon: 4.0333,
-        buienradarId: 6330, // Meetstation Hoek van Holland (dichtstbij)
+        buienradarId: 6330, // Meetstation Hoek van Holland
+        rwsTideLocation: 'Hoek van Holland(HOKVHLD)',
         type: 'strand',
         bestWind: ['ZW', 'W', 'NW', 'N'],
         description: 'Nieuw strand, vaak rustig, goede condities',
@@ -117,7 +121,8 @@ const SPOTS = [
         location: 'Zuid-Holland',
         lat: 51.8167,
         lon: 3.9167,
-        buienradarId: 6310, // Meetstation Vlissingen (dichtstbij kust)
+        buienradarId: 6310, // Meetstation Vlissingen
+        rwsTideLocation: 'Brouwershavensegat 08(BG2OHD08)',
         type: 'strand',
         bestWind: ['ZW', 'W', 'NW'],
         description: 'Brouwersdam nabij, keuze uit zee of binnenwater',
@@ -130,6 +135,7 @@ const SPOTS = [
         lat: 51.5642,
         lon: 3.4989,
         buienradarId: 6310, // Meetstation Vlissingen
+        rwsTideLocation: 'Vlissingen(VLISSGN)',
         type: 'strand',
         bestWind: ['NW', 'W', 'ZW'],
         description: 'Mooie spot in Zeeland, kan druk zijn in zomer',
