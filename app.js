@@ -3,10 +3,8 @@
 // Buienradar API - gratis KNMI meetstationdata, geen key nodig
 const BUIENRADAR_API_URL = 'https://data.buienradar.nl/2.0/feed/json';
 
-// Getijden API - optioneel via environment/localStorage
-// Voor nu: tijdelijk uitgeschakeld tot serverless proxy beschikbaar is
-// De app werkt volledig zonder getijden, deze worden later toegevoegd
-const TIDE_API_ENABLED = false;
+// Getijden via lokale API proxy (haalt data van tide-forecast.com)
+const TIDE_API_URL = '/api/tide';
 
 // Huidige spot (default: ijmuiden)
 let currentSpot = null;
@@ -382,8 +380,8 @@ function updateGearPanelContent() {
     });
 }
 
-// Getijden cache (6 uur geldig - RWS data verandert niet vaak)
-const TIDE_CACHE_KEY = 'tideCacheRWS';
+// Getijden cache (6 uur geldig)
+const TIDE_CACHE_KEY = 'tideCacheTF';
 const TIDE_CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 uur in ms
 
 // Gecachte getijdendata ophalen
@@ -420,79 +418,31 @@ function setTideCache(data) {
     }
 }
 
-// Hoog- en laagwater extremen berekenen uit RWS waterhoogte data
-function findTideExtremes(tidePoints) {
-    const extremes = [];
-    if (!tidePoints || tidePoints.length < 3) return extremes;
-
-    for (let i = 1; i < tidePoints.length - 1; i++) {
-        const prev = tidePoints[i - 1].value;
-        const curr = tidePoints[i].value;
-        const next = tidePoints[i + 1].value;
-
-        // Lokaal maximum (hoogwater)
-        if (curr > prev && curr > next) {
-            extremes.push({
-                type: 'high',
-                time: tidePoints[i].dateTime,
-                height: curr
-            });
-        }
-        // Lokaal minimum (laagwater)
-        else if (curr < prev && curr < next) {
-            extremes.push({
-                type: 'low',
-                time: tidePoints[i].dateTime,
-                height: curr
-            });
-        }
-    }
-
-    return extremes;
-}
-
-// Getijden ophalen van RWS Waterinfo API voor een spot
+// Getijden ophalen via lokale API proxy
 async function fetchTideDataForSpot(spot) {
-    if (!spot.rwsTideLocation) {
-        console.log(`Geen RWS locatie voor ${spot.name}`);
+    if (!spot.tideLocation) {
+        console.log(`Geen tide locatie voor ${spot.name}`);
         return null;
     }
 
-    const now = new Date();
-    const start = new Date(now.getTime() - 6 * 60 * 60 * 1000); // 6 uur terug
-    const end = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 uur vooruit
-
-    const params = new URLSearchParams({
-        mapType: 'astronomische-getij',
-        locationCode: spot.rwsTideLocation,
-        getijReference: 'NAP',
-        timeZone: 'W. Europe Standard Time',
-        startDate: start.toISOString(),
-        endDate: end.toISOString()
-    });
-
     try {
-        const response = await fetch(`${RWS_TIDE_API_URL}?${params}`, {
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
+        const url = `${TIDE_API_URL}?location=${encodeURIComponent(spot.tideLocation)}`;
+        const response = await fetch(url);
 
         if (!response.ok) {
-            console.error(`RWS API fout voor ${spot.name}:`, response.status);
+            console.error(`Tide API fout voor ${spot.name}:`, response.status);
             return null;
         }
 
         const data = await response.json();
 
-        // RWS geeft data als array van {dateTime, value} in cm
-        if (data && data.length > 0) {
-            const extremes = findTideExtremes(data);
-            console.log(`Getijden opgehaald voor ${spot.name}:`, extremes.length, 'extremen');
-            return { data: extremes, raw: data };
+        if (data.extremes && data.extremes.length > 0) {
+            console.log(`Getijden opgehaald voor ${spot.name}:`, data.extremes.length, 'extremen');
+            return { data: data.extremes };
         }
 
         return null;
+
     } catch (error) {
         console.error(`Fout bij ophalen getijden voor ${spot.name}:`, error);
         return null;
@@ -501,12 +451,6 @@ async function fetchTideDataForSpot(spot) {
 
 // Getijden ophalen voor alle spots (of uit cache)
 async function fetchAllTideData() {
-    // Getijden tijdelijk uitgeschakeld
-    if (!TIDE_API_ENABLED) {
-        console.log('Getijden API is uitgeschakeld');
-        return {};
-    }
-
     // Check cache eerst
     const cached = getTideCache();
     if (cached) {
@@ -514,17 +458,31 @@ async function fetchAllTideData() {
         return cached;
     }
 
-    console.log('Getijdendata ophalen van API voor alle spots...');
+    console.log('Getijdendata ophalen voor alle spots...');
 
     const tideDataBySpot = {};
 
-    // Haal voor elke spot de getijden op
+    // Unieke tide locaties (voorkom dubbele fetches)
+    const uniqueLocations = new Map();
     for (const spot of SPOTS) {
-        if (spot.rwsTideLocation) {
-            tideDataBySpot[spot.id] = await fetchTideDataForSpot(spot);
-            // Kleine delay om rate limiting te voorkomen
-            await new Promise(r => setTimeout(r, 300));
+        if (spot.tideLocation && !uniqueLocations.has(spot.tideLocation)) {
+            uniqueLocations.set(spot.tideLocation, spot);
         }
+    }
+
+    // Haal data op voor unieke locaties
+    for (const [location, spot] of uniqueLocations) {
+        const data = await fetchTideDataForSpot(spot);
+
+        // Koppel aan alle spots met dezelfde locatie
+        for (const s of SPOTS) {
+            if (s.tideLocation === location) {
+                tideDataBySpot[s.id] = data;
+            }
+        }
+
+        // Delay om rate limiting te voorkomen
+        await new Promise(r => setTimeout(r, 500));
     }
 
     // Sla op in cache
@@ -548,13 +506,7 @@ function updateTideDisplay() {
     const tideDirection = document.getElementById('tideDirection');
     const tideTimes = document.getElementById('tideTimes');
 
-    if (!TIDE_API_ENABLED) {
-        tideDirection.textContent = '--';
-        tideTimes.textContent = 'Binnenkort';
-        return;
-    }
-
-    if (!currentSpot || !currentSpot.rwsTideLocation) {
+    if (!currentSpot || !currentSpot.tideLocation) {
         tideDirection.textContent = '--';
         tideTimes.textContent = 'Geen data';
         return;
