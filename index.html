@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wind Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <header class="header">
+            <div class="header-top">
+                <h1>Wind Dashboard</h1>
+                <button class="settings-btn" id="settingsBtn" aria-label="Instellingen">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="spot-nav">
+                <span class="spot-name" id="spotName">IJmuiden</span>
+                <div class="spot-dots" id="spotDots">
+                    <!-- Wordt gevuld door JS -->
+                </div>
+            </div>
+            <p class="update-time" id="updateTime">Laden...</p>
+        </header>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-header">
+                <h3>Instellingen</h3>
+                <button class="settings-close" id="settingsClose">×</button>
+            </div>
+            <div class="settings-content">
+                <div class="settings-group">
+                    <label class="settings-label">Windeenheid</label>
+                    <div class="unit-switcher">
+                        <button class="unit-btn active" data-unit="kn">Knopen</button>
+                        <button class="unit-btn" data-unit="bft">Beaufort</button>
+                        <button class="unit-btn" data-unit="ms">m/s</button>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label">Spots</label>
+                    <div class="spot-list" id="spotList">
+                        <!-- Wordt gevuld door JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="settings-overlay" id="settingsOverlay"></div>
+
+        <!-- Gear Panel -->
+        <div class="gear-panel" id="gearPanel">
+            <div class="gear-panel-header">
+                <h3>Mijn Gear</h3>
+                <button class="gear-panel-close" id="gearPanelClose">×</button>
+            </div>
+            <div class="gear-panel-content">
+                <div class="gear-section">
+                    <h4>Zeilen</h4>
+                    <div class="gear-table" id="sailsTable">
+                        <!-- Gevuld door JS -->
+                    </div>
+                </div>
+                <div class="gear-section">
+                    <h4>Boards</h4>
+                    <div class="gear-table" id="boardsTable">
+                        <!-- Gevuld door JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="gear-overlay" id="gearOverlay"></div>
+
+        <main class="main-grid">
+            <!-- Huidige condities -->
+            <section class="card current-conditions">
+                <h2>Nu</h2>
+                <div class="current-combined">
+                    <!-- Wind primair -->
+                    <div class="wind-primary">
+                        <div class="wind-main">
+                            <span class="wind-speed" id="currentSpeed">--</span>
+                            <span class="wind-unit" id="windUnit">kn</span>
+                        </div>
+                        <div class="wind-gusts">
+                            <span class="gusts-value" id="currentGusts">--</span>
+                            <span class="wind-unit" id="gustsUnit">kn</span>
+                        </div>
+                        <div class="wind-direction">
+                            <span class="direction-arrow" id="directionArrow">↓</span>
+                            <span class="direction-name" id="directionText">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Secundaire info -->
+                    <div class="secondary-info">
+                        <!-- Gear advies -->
+                        <div class="gear-advice" id="gearAdvice">
+                            <span class="gear-sail" id="gearSail">--</span>
+                            <span class="gear-board" id="gearBoard">--</span>
+                        </div>
+                        <!-- Golven -->
+                        <div class="info-row">
+                            <span class="info-label">Golf</span>
+                            <span class="info-value"><span id="waveHeight">--</span>m</span>
+                            <span class="info-detail"><span id="wavePeriod">--</span>s <span id="waveDirection">--</span></span>
+                        </div>
+                        <!-- Getij -->
+                        <div class="info-row tide-row" id="tideRow">
+                            <span class="info-label">Getij</span>
+                            <span class="tide-direction" id="tideDirection">--</span>
+                            <span class="tide-times" id="tideTimes">--</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Samenvatting vandaag -->
+            <section class="card summary-card">
+                <h2>Vandaag</h2>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <span class="summary-label">Gem. wind</span>
+                        <span class="summary-value" id="avgSpeed">--</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Max. wind</span>
+                        <span class="summary-value" id="maxSpeed">--</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Max. vlagen</span>
+                        <span class="summary-value" id="maxGusts">--</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Max. golf</span>
+                        <span class="summary-value" id="maxWave">--</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 24-uurs voorspelling grafiek -->
+            <section class="card forecast-card">
+                <h2>Komende 24 uur</h2>
+                <div class="chart-container">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Uurlijkse voorspelling -->
+            <section class="card hourly-card">
+                <h2>Per uur</h2>
+                <div class="hourly-scroll" id="hourlyScroll">
+                    <!-- Wordt gevuld door JS -->
+                </div>
+            </section>
+
+            <!-- Meerdaagse voorspelling -->
+            <section class="card weekly-card">
+                <h2>Komende 7 dagen</h2>
+                <div class="weekly-forecast" id="weeklyForecast">
+                    <!-- Wordt gevuld door JS -->
+                </div>
+            </section>
+        </main>
+
+        <!-- AI Chat -->
+        <aside class="chat-container" id="chatContainer">
+            <button class="chat-toggle" id="chatToggle">
+                <span class="chat-toggle-icon">💬</span>
+                <span class="chat-toggle-text">Vraag advies</span>
+            </button>
+            <div class="chat-panel" id="chatPanel">
+                <div class="chat-header">
+                    <h3>Wind Assistent</h3>
+                    <button class="chat-close" id="chatClose">×</button>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message assistant">
+                        <p>Hoi! Ik help je de beste spot te vinden. Stel een vraag zoals:</p>
+                        <ul>
+                            <li>"Waar kan ik over 3 uur het beste kiten?"</li>
+                            <li>"Vergelijk IJmuiden en Wijk aan Zee"</li>
+                            <li>"Welke spot heeft de meeste wind vandaag?"</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Stel je vraag..." />
+                    <button class="chat-send" id="chatSend">→</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="spots.js"></script>
+    <script src="chat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
