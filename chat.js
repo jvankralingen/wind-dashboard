@@ -193,7 +193,7 @@ function handleBestSpot(q, hoursFromNow, maxDistanceKm) {
 
     for (const data of spotsData) {
         const conditions = getConditionsAtTime(data, hoursFromNow);
-        const score = calculateKiteScore(conditions, data.spot);
+        const score = calculateWindsurfScore(conditions, data.spot);
 
         let distance = Infinity;
         let driveTime = '';
@@ -254,7 +254,7 @@ function handleCompareSpots(q, hoursFromNow) {
         const data = spotsData.find(d => d.spot.id === spot.id);
         if (data) {
             const conditions = getConditionsAtTime(data, hoursFromNow);
-            const score = calculateKiteScore(conditions, spot);
+            const score = calculateWindsurfScore(conditions, spot);
             results.push({ spot, conditions, score });
         }
     }
@@ -351,7 +351,7 @@ function handleOverview(hoursFromNow) {
 
     const results = spotsData.map(data => {
         const conditions = getConditionsAtTime(data, hoursFromNow);
-        const score = calculateKiteScore(conditions, data.spot);
+        const score = calculateWindsurfScore(conditions, data.spot);
         return { spot: data.spot, conditions, score };
     });
 

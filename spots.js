@@ -1,4 +1,4 @@
-// Kitesurf/Windsurf Spots Database
+// Windsurf Spots Database
 // buienradarId verwijst naar het dichtstbijzijnde KNMI meetstation
 
 // Gear configuratie - windsnelheid in knopen
@@ -246,19 +246,19 @@ function getBeaufortFromKmh(kmh) {
     return 12;
 }
 
-// Score berekenen voor kitesurf condities
-function calculateKiteScore(conditions, spot) {
+// Score berekenen voor windsurf condities
+function calculateWindsurfScore(conditions, spot) {
     let score = 0;
 
-    // Wind score (ideaal 15-25 knopen voor kiten)
+    // Wind score (ideaal 15-25 knopen voor windsurfen)
     const knots = conditions.windSpeedKnots;
     if (knots >= 12 && knots <= 30) {
         if (knots >= 15 && knots <= 25) {
             score += 40; // Perfecte wind
         } else if (knots >= 12 && knots < 15) {
-            score += 25; // Licht maar kiteable
+            score += 25; // Licht maar planeerbaar
         } else {
-            score += 30; // Sterk maar kiteable
+            score += 30; // Sterk maar goed
         }
     } else if (knots >= 8 && knots < 12) {
         score += 10; // Marginaal
@@ -296,4 +296,4 @@ window.estimateDriveTime = estimateDriveTime;
 window.fetchSpotData = fetchSpotData;
 window.fetchAllSpotsData = fetchAllSpotsData;
 window.getConditionsAtTime = getConditionsAtTime;
-window.calculateKiteScore = calculateKiteScore;
+window.calculateWindsurfScore = calculateWindsurfScore;
