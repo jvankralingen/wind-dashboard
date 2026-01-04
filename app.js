@@ -329,11 +329,14 @@ function updateGearPanelContent() {
 
     if (!sailsTable || !boardsTable || !window.GEAR_CONFIG) return;
 
+    // Sorteer gear voor correcte weergave
+    window.sortGear();
+
     const advice = window.getGearAdvice(currentWindKnots);
 
-    // Zeilen tabel met specs
+    // Zeilen tabel
     sailsTable.innerHTML = '';
-    let prevMax = 0;
+    let prevMax = 12; // Minimum wind voor planeren
     window.GEAR_CONFIG.sails.forEach(sail => {
         const row = document.createElement('div');
         row.className = 'gear-row';
@@ -345,26 +348,19 @@ function updateGearPanelContent() {
             ? `${prevMax}+ kn`
             : `${prevMax}-${sail.maxWind} kn`;
 
-        const specs = sail.specs;
         row.innerHTML = `
             <div class="gear-row-main">
                 <span class="gear-row-name">${sail.size}m²</span>
                 <span class="gear-row-wind">${windRange}</span>
             </div>
-            <div class="gear-row-specs">
-                <span>Mast ${specs.mast}</span>
-                <span>Luff ${specs.luff}</span>
-                <span>Boom ${specs.boom}</span>
-                <span>DH ${specs.downhaul}</span>
-            </div>
         `;
         sailsTable.appendChild(row);
-        prevMax = sail.maxWind;
+        prevMax = sail.maxWind === Infinity ? prevMax : sail.maxWind;
     });
 
     // Boards tabel
     boardsTable.innerHTML = '';
-    prevMax = 0;
+    prevMax = 12;
     window.GEAR_CONFIG.boards.forEach(board => {
         const row = document.createElement('div');
         row.className = 'gear-row';
@@ -378,15 +374,13 @@ function updateGearPanelContent() {
 
         row.innerHTML = `
             <div class="gear-row-main">
-                <span class="gear-row-name">${board.brand} ${board.model}</span>
+                <span class="gear-row-name">${board.name}</span>
                 <span class="gear-row-wind">${windRange}</span>
             </div>
-            <div class="gear-row-specs">
-                <span>${board.liters}L</span>
-            </div>
+            ${board.liters ? `<div class="gear-row-specs"><span>${board.liters}L</span></div>` : ''}
         `;
         boardsTable.appendChild(row);
-        prevMax = board.maxWind;
+        prevMax = board.maxWind === Infinity ? prevMax : board.maxWind;
     });
 }
 
