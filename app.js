@@ -1078,20 +1078,18 @@ function setupGearConfig() {
     });
 }
 
-// Sorteer zeilen van groot naar klein (voor settings weergave)
-function sortSailsBySize() {
-    GEAR_CONFIG.sails.sort((a, b) => b.size - a.size);
-}
-
 // Render zeilen lijst
 function renderSailsList() {
     const container = document.getElementById('sailsList');
     container.innerHTML = '';
 
-    // Sorteer van groot naar klein voor weergave
-    sortSailsBySize();
+    // Maak gesorteerde kopie voor weergave (groot naar klein)
+    const sortedSails = [...GEAR_CONFIG.sails].sort((a, b) => b.size - a.size);
 
-    GEAR_CONFIG.sails.forEach((sail, index) => {
+    sortedSails.forEach((sail) => {
+        // Vind de originele index in GEAR_CONFIG.sails
+        const originalIndex = GEAR_CONFIG.sails.findIndex(s => s === sail);
+
         const item = document.createElement('div');
         item.className = 'gear-config-item';
         item.innerHTML = `
@@ -1109,22 +1107,22 @@ function renderSailsList() {
         const deleteBtn = item.querySelector('.gear-delete');
 
         sizeInput.addEventListener('change', () => {
-            GEAR_CONFIG.sails[index].size = parseFloat(sizeInput.value) || 5.0;
-            GEAR_CONFIG.sails[index].name = sizeInput.value;
+            GEAR_CONFIG.sails[originalIndex].size = parseFloat(sizeInput.value) || 5.0;
+            GEAR_CONFIG.sails[originalIndex].name = sizeInput.value;
             saveGearConfig(GEAR_CONFIG);
-            renderSailsList(); // Hersorteer na wijziging
+            renderSailsList();
             updateGearAdvice();
         });
 
         windInput.addEventListener('change', () => {
             const val = windInput.value.trim();
-            GEAR_CONFIG.sails[index].maxWind = val === '' ? Infinity : (parseInt(val) || 25);
+            GEAR_CONFIG.sails[originalIndex].maxWind = val === '' ? Infinity : (parseInt(val) || 25);
             saveGearConfig(GEAR_CONFIG);
             updateGearAdvice();
         });
 
         deleteBtn.addEventListener('click', () => {
-            GEAR_CONFIG.sails.splice(index, 1);
+            GEAR_CONFIG.sails.splice(originalIndex, 1);
             saveGearConfig(GEAR_CONFIG);
             renderSailsList();
             updateGearAdvice();
@@ -1139,7 +1137,10 @@ function renderBoardsList() {
     const container = document.getElementById('boardsList');
     container.innerHTML = '';
 
-    GEAR_CONFIG.boards.forEach((board, index) => {
+    GEAR_CONFIG.boards.forEach((board) => {
+        // Vind de originele index
+        const originalIndex = GEAR_CONFIG.boards.indexOf(board);
+
         const item = document.createElement('div');
         item.className = 'gear-config-item';
         item.innerHTML = `
@@ -1156,20 +1157,20 @@ function renderBoardsList() {
         const deleteBtn = item.querySelector('.gear-delete');
 
         nameInput.addEventListener('change', () => {
-            GEAR_CONFIG.boards[index].name = nameInput.value || 'Board';
+            GEAR_CONFIG.boards[originalIndex].name = nameInput.value || 'Board';
             saveGearConfig(GEAR_CONFIG);
             updateGearAdvice();
         });
 
         windInput.addEventListener('change', () => {
             const val = windInput.value.trim();
-            GEAR_CONFIG.boards[index].maxWind = val === '' ? Infinity : (parseInt(val) || 25);
+            GEAR_CONFIG.boards[originalIndex].maxWind = val === '' ? Infinity : (parseInt(val) || 25);
             saveGearConfig(GEAR_CONFIG);
             updateGearAdvice();
         });
 
         deleteBtn.addEventListener('click', () => {
-            GEAR_CONFIG.boards.splice(index, 1);
+            GEAR_CONFIG.boards.splice(originalIndex, 1);
             saveGearConfig(GEAR_CONFIG);
             renderBoardsList();
             updateGearAdvice();
