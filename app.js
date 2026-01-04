@@ -1079,10 +1079,18 @@ function setupGearConfig() {
     });
 }
 
+// Sorteer zeilen van groot naar klein (voor settings weergave)
+function sortSailsBySize() {
+    GEAR_CONFIG.sails.sort((a, b) => b.size - a.size);
+}
+
 // Render zeilen lijst
 function renderSailsList() {
     const container = document.getElementById('sailsList');
     container.innerHTML = '';
+
+    // Sorteer van groot naar klein voor weergave
+    sortSailsBySize();
 
     GEAR_CONFIG.sails.forEach((sail, index) => {
         const item = document.createElement('div');
@@ -1105,6 +1113,7 @@ function renderSailsList() {
             GEAR_CONFIG.sails[index].size = parseFloat(sizeInput.value) || 5.0;
             GEAR_CONFIG.sails[index].name = sizeInput.value;
             saveGearConfig(GEAR_CONFIG);
+            renderSailsList(); // Hersorteer na wijziging
             updateGearAdvice();
         });
 
