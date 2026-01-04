@@ -1044,6 +1044,9 @@ function setupSettingsPanel() {
         spotList.appendChild(item);
     });
 
+    // Gear config UI setup
+    setupGearConfig();
+
     // Open settings
     settingsBtn.addEventListener('click', () => {
         settingsPanel.classList.add('open');
@@ -1058,6 +1061,120 @@ function setupSettingsPanel() {
 
     settingsClose.addEventListener('click', closeSettings);
     settingsOverlay.addEventListener('click', closeSettings);
+}
+
+// Gear configuratie UI setup
+function setupGearConfig() {
+    renderSailsList();
+    renderBoardsList();
+
+    // Add sail button
+    document.getElementById('addSailBtn').addEventListener('click', () => {
+        GEAR_CONFIG.sails.push({ size: 5.0, maxWind: 25, name: 'Nieuw zeil' });
+        saveGearConfig(GEAR_CONFIG);
+        renderSailsList();
+        updateGearAdvice();
+    });
+
+    // Add board button
+    document.getElementById('addBoardBtn').addEventListener('click', () => {
+        GEAR_CONFIG.boards.push({ name: 'Nieuw board', liters: 100, maxWind: 25 });
+        saveGearConfig(GEAR_CONFIG);
+        renderBoardsList();
+        updateGearAdvice();
+    });
+}
+
+// Render zeilen lijst
+function renderSailsList() {
+    const container = document.getElementById('sailsList');
+    container.innerHTML = '';
+
+    GEAR_CONFIG.sails.forEach((sail, index) => {
+        const item = document.createElement('div');
+        item.className = 'gear-config-item';
+        item.innerHTML = `
+            <input type="number" step="0.1" class="gear-size" value="${sail.size}" placeholder="m²" title="Zeilgrootte in m²">
+            <span class="gear-label">m²</span>
+            <span class="gear-label">tot</span>
+            <input type="number" class="gear-wind" value="${sail.maxWind === Infinity ? '' : sail.maxWind}" placeholder="∞" title="Max wind in knopen (leeg = onbeperkt)">
+            <span class="gear-label">kn</span>
+            <button class="gear-delete" title="Verwijder">&times;</button>
+        `;
+
+        // Event listeners
+        const sizeInput = item.querySelector('.gear-size');
+        const windInput = item.querySelector('.gear-wind');
+        const deleteBtn = item.querySelector('.gear-delete');
+
+        sizeInput.addEventListener('change', () => {
+            GEAR_CONFIG.sails[index].size = parseFloat(sizeInput.value) || 5.0;
+            GEAR_CONFIG.sails[index].name = sizeInput.value;
+            saveGearConfig(GEAR_CONFIG);
+            updateGearAdvice();
+        });
+
+        windInput.addEventListener('change', () => {
+            const val = windInput.value.trim();
+            GEAR_CONFIG.sails[index].maxWind = val === '' ? Infinity : (parseInt(val) || 25);
+            saveGearConfig(GEAR_CONFIG);
+            updateGearAdvice();
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            GEAR_CONFIG.sails.splice(index, 1);
+            saveGearConfig(GEAR_CONFIG);
+            renderSailsList();
+            updateGearAdvice();
+        });
+
+        container.appendChild(item);
+    });
+}
+
+// Render boards lijst
+function renderBoardsList() {
+    const container = document.getElementById('boardsList');
+    container.innerHTML = '';
+
+    GEAR_CONFIG.boards.forEach((board, index) => {
+        const item = document.createElement('div');
+        item.className = 'gear-config-item';
+        item.innerHTML = `
+            <input type="text" class="gear-name" value="${board.name}" placeholder="Board naam">
+            <span class="gear-label">tot</span>
+            <input type="number" class="gear-wind" value="${board.maxWind === Infinity ? '' : board.maxWind}" placeholder="∞" title="Max wind in knopen (leeg = onbeperkt)">
+            <span class="gear-label">kn</span>
+            <button class="gear-delete" title="Verwijder">&times;</button>
+        `;
+
+        // Event listeners
+        const nameInput = item.querySelector('.gear-name');
+        const windInput = item.querySelector('.gear-wind');
+        const deleteBtn = item.querySelector('.gear-delete');
+
+        nameInput.addEventListener('change', () => {
+            GEAR_CONFIG.boards[index].name = nameInput.value || 'Board';
+            saveGearConfig(GEAR_CONFIG);
+            updateGearAdvice();
+        });
+
+        windInput.addEventListener('change', () => {
+            const val = windInput.value.trim();
+            GEAR_CONFIG.boards[index].maxWind = val === '' ? Infinity : (parseInt(val) || 25);
+            saveGearConfig(GEAR_CONFIG);
+            updateGearAdvice();
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            GEAR_CONFIG.boards.splice(index, 1);
+            saveGearConfig(GEAR_CONFIG);
+            renderBoardsList();
+            updateGearAdvice();
+        });
+
+        container.appendChild(item);
+    });
 }
 
 // Spot dots navigatie setup

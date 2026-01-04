@@ -412,6 +412,98 @@ body {
     opacity: 0.7;
 }
 
+/* Gear config in settings */
+.gear-config-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.gear-config-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-card);
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+}
+
+.gear-config-item input {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: var(--text-primary);
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    min-width: 0;
+}
+
+.gear-config-item input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.gear-config-item input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.gear-config-item .gear-size {
+    width: 60px;
+    text-align: center;
+}
+
+.gear-config-item .gear-wind {
+    width: 55px;
+    text-align: center;
+}
+
+.gear-config-item .gear-name {
+    flex: 2;
+}
+
+.gear-config-item .gear-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.gear-config-item .gear-delete {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    line-height: 1;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.gear-config-item .gear-delete:hover {
+    color: #ef4444;
+    opacity: 1;
+}
+
+.gear-add-btn {
+    width: 100%;
+    background: transparent;
+    border: 2px dashed rgba(148, 163, 184, 0.3);
+    color: var(--text-secondary);
+    padding: 0.625rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gear-add-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
 /* Main Grid - Mobile first */
 .main-grid {
     display: grid;

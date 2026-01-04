@@ -1,66 +1,106 @@
 // Windsurf Spots Database
-// buienradarId verwijst naar het dichtstbijzijnde KNMI meetstation
 
-// Gear configuratie - windsnelheid in knopen
-// Zeil specs: S2Maui Dragon - mast, imcs, luff, boom, downhaul, head, battens
-const GEAR_CONFIG = {
+// Default gear configuratie - windsnelheid in knopen
+const DEFAULT_GEAR_CONFIG = {
     sails: [
-        {
-            size: 5.2,
-            maxWind: 21,
-            brand: 'S2Maui Dragon',
-            specs: { mast: 400, imcs: 19, luff: 409, boom: 171, downhaul: 9, head: 'Fixed', battens: 4 }
-        },
-        {
-            size: 4.6,
-            maxWind: 26,
-            brand: 'S2Maui Dragon',
-            specs: { mast: 370, imcs: 17, luff: 383, boom: 162, downhaul: 13, head: 'Fixed', battens: 4 }
-        },
-        {
-            size: 4.2,
-            maxWind: 28,
-            brand: 'S2Maui Dragon',
-            specs: { mast: '340/370', imcs: '15/17', luff: 364, boom: 155, downhaul: '25/5', head: '1/11', battens: 4 }
-        },
-        {
-            size: 3.8,
-            maxWind: 30,
-            brand: 'S2Maui Dragon',
-            specs: { mast: '340/370', imcs: '15/17', luff: 348, boom: 147, downhaul: '9/5', head: '1/27', battens: 4 }
-        },
-        {
-            size: 3.4,
-            maxWind: Infinity,
-            brand: 'S2Maui Dragon',
-            specs: { mast: 340, imcs: 15, luff: 341, boom: 141, downhaul: 5, head: 4, battens: 4 }
-        }
+        { size: 7.0, maxWind: 18, name: '7.0' },
+        { size: 6.0, maxWind: 22, name: '6.0' },
+        { size: 5.2, maxWind: 26, name: '5.2' },
+        { size: 4.5, maxWind: 30, name: '4.5' },
+        { size: 4.0, maxWind: Infinity, name: '4.0' }
     ],
     boards: [
-        { name: 'Flikka 99L', brand: 'Flikka', model: 'Compact Wave', liters: 99, maxWind: 21 },
-        { name: 'Goya 85L', brand: 'Goya', model: 'Nitro 2', liters: 85, maxWind: Infinity }
+        { name: 'Freeride 130L', liters: 130, maxWind: 18 },
+        { name: 'Freewave 105L', liters: 105, maxWind: 24 },
+        { name: 'Wave 85L', liters: 85, maxWind: Infinity }
     ]
 };
 
+// Gear configuratie laden uit localStorage of default gebruiken
+function loadGearConfig() {
+    try {
+        const saved = localStorage.getItem('gearConfig');
+        if (saved) {
+            const config = JSON.parse(saved);
+            // Zorg dat maxWind Infinity correct wordt behandeld
+            config.sails = config.sails.map(s => ({
+                ...s,
+                maxWind: s.maxWind === null || s.maxWind === 'Infinity' ? Infinity : s.maxWind
+            }));
+            config.boards = config.boards.map(b => ({
+                ...b,
+                maxWind: b.maxWind === null || b.maxWind === 'Infinity' ? Infinity : b.maxWind
+            }));
+            return config;
+        }
+    } catch (e) {
+        console.error('Fout bij laden gear config:', e);
+    }
+    return JSON.parse(JSON.stringify(DEFAULT_GEAR_CONFIG));
+}
+
+// Gear configuratie opslaan in localStorage
+function saveGearConfig(config) {
+    try {
+        // Converteer Infinity naar null voor JSON
+        const toSave = {
+            sails: config.sails.map(s => ({
+                ...s,
+                maxWind: s.maxWind === Infinity ? null : s.maxWind
+            })),
+            boards: config.boards.map(b => ({
+                ...b,
+                maxWind: b.maxWind === Infinity ? null : b.maxWind
+            }))
+        };
+        localStorage.setItem('gearConfig', JSON.stringify(toSave));
+    } catch (e) {
+        console.error('Fout bij opslaan gear config:', e);
+    }
+}
+
+// Huidige gear config (wordt geladen bij init)
+let GEAR_CONFIG = loadGearConfig();
+
+// Sorteer gear op maxWind (kleinste eerst, Infinity laatste)
+function sortGear() {
+    GEAR_CONFIG.sails.sort((a, b) => {
+        if (a.maxWind === Infinity) return 1;
+        if (b.maxWind === Infinity) return -1;
+        return a.maxWind - b.maxWind;
+    });
+    GEAR_CONFIG.boards.sort((a, b) => {
+        if (a.maxWind === Infinity) return 1;
+        if (b.maxWind === Infinity) return -1;
+        return a.maxWind - b.maxWind;
+    });
+}
+
 // Bepaal aanbevolen gear op basis van windsnelheid (in knopen)
 function getGearAdvice(windKnots) {
-    if (windKnots < 15) {
+    if (windKnots < 12 || GEAR_CONFIG.sails.length === 0) {
         return { sail: null, board: null, message: 'Te weinig wind' };
     }
+
+    sortGear();
 
     const sail = GEAR_CONFIG.sails.find(s => windKnots < s.maxWind);
     const board = GEAR_CONFIG.boards.find(b => windKnots < b.maxWind);
 
     return {
-        sail: sail ? sail.size : GEAR_CONFIG.sails[GEAR_CONFIG.sails.length - 1].size,
-        board: board ? board.name : GEAR_CONFIG.boards[GEAR_CONFIG.boards.length - 1].name,
+        sail: sail ? sail.size : (GEAR_CONFIG.sails.length > 0 ? GEAR_CONFIG.sails[GEAR_CONFIG.sails.length - 1].size : null),
+        board: board ? board.name : (GEAR_CONFIG.boards.length > 0 ? GEAR_CONFIG.boards[GEAR_CONFIG.boards.length - 1].name : null),
         message: null
     };
 }
 
 // Maak gear functies globaal beschikbaar
 window.GEAR_CONFIG = GEAR_CONFIG;
+window.DEFAULT_GEAR_CONFIG = DEFAULT_GEAR_CONFIG;
 window.getGearAdvice = getGearAdvice;
+window.loadGearConfig = loadGearConfig;
+window.saveGearConfig = saveGearConfig;
+window.sortGear = sortGear;
 
 const SPOTS = [
     {
