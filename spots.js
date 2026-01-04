@@ -3,16 +3,15 @@
 // Default gear configuratie - windsnelheid in knopen
 const DEFAULT_GEAR_CONFIG = {
     sails: [
-        { size: 7.0, maxWind: 18, name: '7.0' },
-        { size: 6.0, maxWind: 22, name: '6.0' },
-        { size: 5.2, maxWind: 26, name: '5.2' },
-        { size: 4.5, maxWind: 30, name: '4.5' },
-        { size: 4.0, maxWind: Infinity, name: '4.0' }
+        { size: 5.2, maxWind: 21, name: '5.2' },
+        { size: 4.6, maxWind: 26, name: '4.6' },
+        { size: 4.2, maxWind: 28, name: '4.2' },
+        { size: 3.8, maxWind: 30, name: '3.8' },
+        { size: 3.4, maxWind: Infinity, name: '3.4' }
     ],
     boards: [
-        { name: 'Freeride 130L', liters: 130, maxWind: 18 },
-        { name: 'Freewave 105L', liters: 105, maxWind: 24 },
-        { name: 'Wave 85L', liters: 85, maxWind: Infinity }
+        { name: 'Flikka 99L', liters: 99, maxWind: 21 },
+        { name: 'Goya 85L', liters: 85, maxWind: Infinity }
     ]
 };
 
