@@ -1,7 +1,7 @@
 // Wind Dashboard App
 
-// Buienradar API - gratis KNMI meetstationdata, geen key nodig
-const BUIENRADAR_API_URL = 'https://data.buienradar.nl/2.0/feed/json';
+// Actuelewind.nl API via lokale proxy - realtime meetstationdata
+const ACTUELEWIND_API_URL = '/api/wind';
 
 // Getijden via lokale API proxy (haalt data van tide-forecast.com)
 const TIDE_API_URL = '/api/tide';
@@ -146,42 +146,52 @@ function getCurrentUnitLabel() {
     }
 }
 
-// Live KNMI meetstationdata via Buienradar API
-let buienradarData = null;
+// Live meetstationdata via actuelewind.nl API
+let actueleWindData = null;
 let liveStationData = null;
 
-async function fetchBuienradarData() {
+async function fetchActueleWindData() {
     try {
-        const response = await fetch(BUIENRADAR_API_URL);
+        const response = await fetch(ACTUELEWIND_API_URL);
         const data = await response.json();
 
-        if (data.actual && data.actual.stationmeasurements) {
-            buienradarData = data.actual.stationmeasurements;
-            console.log('Buienradar data opgehaald:', buienradarData.length, 'stations');
-            return buienradarData;
+        if (data.stations) {
+            actueleWindData = data.stations;
+            console.log('Actuelewind.nl data opgehaald:', Object.keys(actueleWindData).length, 'stations');
+            return actueleWindData;
         }
     } catch (error) {
-        console.error('Fout bij ophalen Buienradar data:', error);
+        console.error('Fout bij ophalen actuelewind.nl data:', error);
     }
     return null;
 }
 
 // Haal meetstationdata op voor een specifieke spot
 function getStationDataForSpot(spot) {
-    if (!buienradarData || !spot.buienradarId) {
+    if (!actueleWindData || !spot.actueleWindId) {
         return null;
     }
 
-    const station = buienradarData.find(s => s.stationid === spot.buienradarId);
+    const station = actueleWindData[spot.actueleWindId];
     if (station) {
-        console.log(`Meetstation ${station.stationname} gevonden voor ${spot.name}:`, {
-            windsnelheid: station.windspeedBft + ' Bft',
-            windsnelheidMS: station.windspeed + ' m/s',
-            windstoten: station.windgusts + ' m/s',
-            richting: station.winddirection
+        console.log(`Meetstation ${station.naam} gevonden voor ${spot.name}:`, {
+            windsnelheidMS: station.windsnelheidMS + ' m/s',
+            windstoten: station.windstotenMS + ' m/s',
+            richting: station.windrichting,
+            tijd: station.tijdstip
         });
+        // Converteer naar format dat rest van app verwacht
+        return {
+            stationname: station.naam,
+            windspeed: station.windsnelheidMS,
+            windgusts: station.windstotenMS,
+            winddirectiondegrees: station.windrichtingGR,
+            winddirection: station.windrichting,
+            windspeedBft: getBeaufort(station.windsnelheidMS * 3.6),
+            temperature: station.temperatuurGC
+        };
     }
-    return station;
+    return null;
 }
 
 // Huidige condities updaten (met live KNMI meetstationdata indien beschikbaar)
@@ -1137,11 +1147,11 @@ async function fetchAndUpdateDashboard() {
     try {
         document.getElementById('updateTime').textContent = 'Laden...';
 
-        // Wind, marine en Buienradar API's parallel ophalen
+        // Wind, marine en actuelewind.nl API's parallel ophalen
         const [windResponse, marineResponse] = await Promise.all([
             fetch(getWindApiUrl(currentSpot)),
             fetch(getMarineApiUrl(currentSpot)),
-            fetchBuienradarData()
+            fetchActueleWindData()
         ]);
 
         windData = await windResponse.json();

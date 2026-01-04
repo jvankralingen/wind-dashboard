@@ -69,7 +69,7 @@ const SPOTS = [
         location: 'Noord-Holland',
         lat: 52.4963,
         lon: 4.6025,
-        buienradarId: 6225, // Meetstation IJmuiden
+        actueleWindId: '6225', // Meetstation IJmuiden - actuelewind.nl
         tideLocation: 'IJmuiden-Netherlands', // tide-forecast.com locatie
         type: 'strand',
         bestWind: ['NW', 'W', 'ZW'],
@@ -82,7 +82,7 @@ const SPOTS = [
         location: 'Noord-Holland',
         lat: 52.4647,
         lon: 4.5917,
-        buienradarId: 6225, // Meetstation IJmuiden
+        actueleWindId: '6225', // Meetstation IJmuiden - actuelewind.nl
         tideLocation: 'IJmuiden-Netherlands',
         type: 'strand',
         bestWind: ['NW', 'W', 'ZW'],
@@ -95,7 +95,7 @@ const SPOTS = [
         location: 'Zuid-Holland',
         lat: 51.9775,
         lon: 4.1231,
-        buienradarId: 6330, // Meetstation Hoek van Holland
+        actueleWindId: '6330', // Meetstation Hoek van Holland - actuelewind.nl
         tideLocation: 'Hoek-van-Holland-Netherlands',
         type: 'strand',
         bestWind: ['ZW', 'W', 'NW'],
@@ -108,7 +108,7 @@ const SPOTS = [
         location: 'Zuid-Holland',
         lat: 51.9483,
         lon: 4.0333,
-        buienradarId: 6330, // Meetstation Hoek van Holland
+        actueleWindId: '6330', // Meetstation Hoek van Holland - actuelewind.nl
         tideLocation: 'Hoek-van-Holland-Netherlands',
         type: 'strand',
         bestWind: ['ZW', 'W', 'NW', 'N'],
@@ -121,7 +121,7 @@ const SPOTS = [
         location: 'Zuid-Holland',
         lat: 51.8167,
         lon: 3.9167,
-        buienradarId: 6310, // Meetstation Vlissingen
+        actueleWindId: '6310', // Meetstation Vlissingen - actuelewind.nl
         tideLocation: 'Brouwershaven-Netherlands',
         type: 'strand',
         bestWind: ['ZW', 'W', 'NW'],
@@ -134,7 +134,7 @@ const SPOTS = [
         location: 'Zeeland',
         lat: 51.5642,
         lon: 3.4989,
-        buienradarId: 6310, // Meetstation Vlissingen
+        actueleWindId: '6310', // Meetstation Vlissingen - actuelewind.nl
         tideLocation: 'Vlissingen-Netherlands',
         type: 'strand',
         bestWind: ['NW', 'W', 'ZW'],
