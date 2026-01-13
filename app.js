@@ -1,7 +1,7 @@
 // Wind Dashboard App
 
-// Actuelewind.nl API via lokale proxy - realtime meetstationdata
-const ACTUELEWIND_API_URL = '/api/wind';
+// RWS Wind API - realtime meetstationdata van Rijkswaterstaat
+const RWS_API_BASE = 'https://rws-api-bay.vercel.app/api';
 
 // Getijden via lokale API proxy (haalt data van tide-forecast.com)
 const TIDE_API_URL = '/api/tide';
@@ -146,67 +146,94 @@ function getCurrentUnitLabel() {
     }
 }
 
-// Live meetstationdata via actuelewind.nl API
-let actueleWindData = null;
+// Live meetstationdata via RWS API (Rijkswaterstaat)
+let rwsWindData = null;
+let rwsForecastData = null;
 let liveStationData = null;
 
-async function fetchActueleWindData() {
+async function fetchRWSWindData() {
+    if (!currentSpot || !currentSpot.rwsWindId) {
+        console.log('Geen RWS wind locatie voor deze spot');
+        return null;
+    }
+
     try {
-        const response = await fetch(ACTUELEWIND_API_URL);
+        const url = `${RWS_API_BASE}/wind/actueel?locatie=${currentSpot.rwsWindId}`;
+        const response = await fetch(url);
         const data = await response.json();
 
-        if (data.stations) {
-            actueleWindData = data.stations;
-            console.log('Actuelewind.nl data opgehaald:', Object.keys(actueleWindData).length, 'stations');
-            return actueleWindData;
+        if (data.success && data.data && data.data.length > 0) {
+            rwsWindData = data;
+            console.log('RWS wind data opgehaald:', data.locatieNaam, data.count, 'metingen');
+            return data;
         }
     } catch (error) {
-        console.error('Fout bij ophalen actuelewind.nl data:', error);
+        console.error('Fout bij ophalen RWS wind data:', error);
+    }
+    return null;
+}
+
+async function fetchRWSForecast() {
+    if (!currentSpot || !currentSpot.rwsWindId) {
+        return null;
+    }
+
+    try {
+        const url = `${RWS_API_BASE}/wind/forecast?locatie=${currentSpot.rwsWindId}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.success && data.data && data.data.length > 0) {
+            rwsForecastData = data;
+            console.log('RWS forecast opgehaald:', data.count, 'punten');
+            return data;
+        }
+    } catch (error) {
+        console.error('Fout bij ophalen RWS forecast:', error);
     }
     return null;
 }
 
 // Haal meetstationdata op voor een specifieke spot
 function getStationDataForSpot(spot) {
-    if (!actueleWindData || !spot.actueleWindId) {
+    if (!rwsWindData || !rwsWindData.data || rwsWindData.data.length === 0) {
         return null;
     }
 
-    const station = actueleWindData[spot.actueleWindId];
-    if (station) {
-        console.log(`Meetstation ${station.naam} gevonden voor ${spot.name}:`, {
-            windsnelheidMS: station.windsnelheidMS + ' m/s',
-            windstoten: station.windstotenMS + ' m/s',
-            richting: station.windrichting,
-            tijd: station.tijdstip
-        });
-        // Converteer naar format dat rest van app verwacht
-        return {
-            stationname: station.naam,
-            windspeed: station.windsnelheidMS,
-            windgusts: station.windstotenMS,
-            winddirectiondegrees: station.windrichtingGR,
-            winddirection: station.windrichting,
-            windspeedBft: getBeaufort(station.windsnelheidMS * 3.6),
-            temperature: station.temperatuurGC
-        };
-    }
-    return null;
+    // Pak de meest recente meting
+    const latest = rwsWindData.data[rwsWindData.data.length - 1];
+
+    console.log(`RWS meetstation ${rwsWindData.locatieNaam} voor ${spot.name}:`, {
+        windsnelheidMS: latest.windsnelheid + ' m/s',
+        richting: latest.windrichting + '°',
+        tijd: latest.tijdstip
+    });
+
+    // Converteer naar format dat rest van app verwacht
+    return {
+        stationname: rwsWindData.locatieNaam,
+        windspeed: latest.windsnelheid,
+        windgusts: null, // RWS API geeft geen vlagen (voorlopig)
+        winddirectiondegrees: latest.windrichting,
+        winddirection: getDirectionName(latest.windrichting),
+        windspeedBft: getBeaufort(latest.windsnelheid * 3.6),
+        temperature: null // RWS API geeft geen temperatuur
+    };
 }
 
-// Huidige condities updaten (met live KNMI meetstationdata indien beschikbaar)
+// Huidige condities updaten (met live RWS meetstationdata indien beschikbaar)
 function updateCurrentConditions() {
     if (!windData) return;
 
     let speedDisplay, gustsDisplay, direction;
 
-    // Gebruik live KNMI meetstationdata van Buienradar indien beschikbaar
+    // Gebruik live RWS meetstationdata indien beschikbaar
     liveStationData = getStationDataForSpot(currentSpot);
 
     if (liveStationData) {
-        // Buienradar geeft windsnelheid in m/s, converteer naar gewenste eenheid
+        // RWS geeft windsnelheid in m/s, converteer naar gewenste eenheid
         const windSpeedMS = liveStationData.windspeed; // m/s
-        const windGustsMS = liveStationData.windgusts; // m/s
+        const windGustsMS = liveStationData.windgusts; // m/s (kan null zijn)
 
         switch (currentUnit) {
             case 'kn':
@@ -219,7 +246,6 @@ function updateCurrentConditions() {
                 break;
             case 'bft':
                 speedDisplay = liveStationData.windspeedBft;
-                // Voor Beaufort vlagen: bereken Bft van m/s
                 gustsDisplay = windGustsMS ? getBeaufort(windGustsMS * 3.6) : '--';
                 break;
             default:
@@ -230,12 +256,10 @@ function updateCurrentConditions() {
         // Windrichting van meetstation (in graden)
         direction = liveStationData.winddirectiondegrees;
 
-        console.log('Actuele condities van KNMI meetstation:', {
+        console.log('Actuele condities van RWS meetstation:', {
             station: liveStationData.stationname,
             windMS: windSpeedMS,
             windKnots: Math.round(windSpeedMS * 1.94384),
-            gustsMS: windGustsMS,
-            gustsKnots: windGustsMS ? Math.round(windGustsMS * 1.94384) : null,
             direction: direction,
             directionName: liveStationData.winddirection
         });
@@ -1268,11 +1292,12 @@ async function fetchAndUpdateDashboard() {
     try {
         document.getElementById('updateTime').textContent = 'Laden...';
 
-        // Wind, marine en actuelewind.nl API's parallel ophalen
+        // Wind, marine en RWS API's parallel ophalen
         const [windResponse, marineResponse] = await Promise.all([
             fetch(getWindApiUrl(currentSpot)),
             fetch(getMarineApiUrl(currentSpot)),
-            fetchActueleWindData()
+            fetchRWSWindData(),
+            fetchRWSForecast()
         ]);
 
         windData = await windResponse.json();
