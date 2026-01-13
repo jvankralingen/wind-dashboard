@@ -662,46 +662,53 @@ function createForecastChart() {
 
     const ctx = document.getElementById('forecastChart').getContext('2d');
 
-    // Data voor daglicht uren
+    // Data voor daglicht uren (48 uur vooruit)
     const labels = [];
     const speeds = [];
     const gusts = [];
     const waves = [];
 
-    // Bepaal sunrise/sunset voor vandaag en morgen
-    const today = new Date();
-    const todayDateStr = today.toISOString().slice(0, 10);
-
-    let sunriseToday = null;
-    let sunsetToday = null;
-    let sunriseTomorrow = null;
-    let sunsetTomorrow = null;
-
+    // Bouw sunrise/sunset lookup voor alle beschikbare dagen
+    const sunData = {};
     if (windData.daily && windData.daily.sunrise && windData.daily.sunset) {
-        const dailyTimes = windData.daily.time;
-        for (let d = 0; d < dailyTimes.length; d++) {
-            if (dailyTimes[d] === todayDateStr) {
-                sunriseToday = new Date(windData.daily.sunrise[d]);
-                sunsetToday = new Date(windData.daily.sunset[d]);
-                if (d + 1 < dailyTimes.length) {
-                    sunriseTomorrow = new Date(windData.daily.sunrise[d + 1]);
-                    sunsetTomorrow = new Date(windData.daily.sunset[d + 1]);
-                }
-                break;
-            }
+        windData.daily.time.forEach((date, i) => {
+            sunData[date] = {
+                sunrise: new Date(windData.daily.sunrise[i]),
+                sunset: new Date(windData.daily.sunset[i])
+            };
+        });
+    }
+
+    // Helper: check of tijd binnen daglicht valt
+    function isDaylightHour(time) {
+        const dateStr = time.toISOString().slice(0, 10);
+        const dayData = sunData[dateStr];
+        if (!dayData) return true; // Geen data = tonen
+        return time >= dayData.sunrise && time <= dayData.sunset;
+    }
+
+    // Helper: maak label met dag indicator
+    function makeLabel(time, prevTime) {
+        const hour = time.getHours();
+        // Toon dag naam bij eerste punt van nieuwe dag of bij 0:00
+        if (!prevTime || time.toDateString() !== prevTime.toDateString()) {
+            const dayNames = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
+            return `${dayNames[time.getDay()]} ${hour}:00`;
         }
+        return `${hour}:00`;
     }
 
     // Gebruik RWS forecast indien beschikbaar, anders Open-Meteo
     const useRWSForecast = rwsForecastData && rwsForecastData.data && rwsForecastData.data.length > 0;
+    const now = new Date();
+    let prevTime = null;
 
     if (useRWSForecast) {
-        // RWS forecast data gebruiken
-        const now = new Date();
+        // RWS forecast data gebruiken (48 uur)
         let pointsAdded = 0;
 
         for (const point of rwsForecastData.data) {
-            if (pointsAdded >= 24) break; // Max 24 uur tonen
+            if (pointsAdded >= 48) break;
 
             const time = new Date(point.tijdstip);
 
@@ -709,18 +716,10 @@ function createForecastChart() {
             if (time < now) continue;
 
             // Check daglicht
-            let isDaylight = true;
-            const timeDate = time.toISOString().slice(0, 10);
+            if (!isDaylightHour(time)) continue;
 
-            if (timeDate === todayDateStr && sunriseToday && sunsetToday) {
-                isDaylight = time >= sunriseToday && time <= sunsetToday;
-            } else if (sunriseTomorrow && sunsetTomorrow) {
-                isDaylight = time >= sunriseTomorrow && time <= sunsetTomorrow;
-            }
-
-            if (!isDaylight) continue;
-
-            labels.push(time.getHours() + ':00');
+            labels.push(makeLabel(time, prevTime));
+            prevTime = time;
 
             // RWS geeft windsnelheid in m/s
             const speedMS = point.windsnelheid;
@@ -730,7 +729,8 @@ function createForecastChart() {
             speeds.push(speedValue);
             gusts.push(0); // RWS geeft geen vlagen in forecast
 
-            // Golven uit Open-Meteo (RWS golf data momenteel niet beschikbaar)
+            // Golven uit Open-Meteo
+            const timeDate = time.toISOString().slice(0, 10);
             const openMeteoIndex = windData.hourly.time.findIndex(t =>
                 new Date(t).getHours() === time.getHours() &&
                 new Date(t).toISOString().slice(0, 10) === timeDate
@@ -746,23 +746,15 @@ function createForecastChart() {
 
         console.log('Forecast chart met RWS data:', pointsAdded, 'punten');
     } else {
-        // Fallback: Open-Meteo forecast
-        for (let i = currentIndex; i < currentIndex + 24 && i < windData.hourly.time.length; i++) {
+        // Fallback: Open-Meteo forecast (48 uur)
+        for (let i = currentIndex; i < currentIndex + 48 && i < windData.hourly.time.length; i++) {
             const time = new Date(windData.hourly.time[i]);
 
-            // Check of dit uur binnen daglicht valt
-            let isDaylight = true;
-            const timeDate = time.toISOString().slice(0, 10);
+            // Check daglicht
+            if (!isDaylightHour(time)) continue;
 
-            if (timeDate === todayDateStr && sunriseToday && sunsetToday) {
-                isDaylight = time >= sunriseToday && time <= sunsetToday;
-            } else if (sunriseTomorrow && sunsetTomorrow) {
-                isDaylight = time >= sunriseTomorrow && time <= sunsetTomorrow;
-            }
-
-            if (!isDaylight) continue;
-
-            labels.push(time.getHours() + ':00');
+            labels.push(makeLabel(time, prevTime));
+            prevTime = time;
 
             const speedKmh = windData.hourly.wind_speed_10m[i];
             const gustsKmh = windData.hourly.wind_gusts_10m[i];
