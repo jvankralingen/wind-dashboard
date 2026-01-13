@@ -780,6 +780,7 @@ function createForecastChart() {
 
     // Check of we vlagen data hebben (niet allemaal 0)
     const hasGusts = gusts.some(g => g > 0);
+    console.log('Forecast chart - useRWSForecast:', useRWSForecast, 'hasGusts:', hasGusts, 'gusts sample:', gusts.slice(0, 5));
 
     const datasets = [];
 
