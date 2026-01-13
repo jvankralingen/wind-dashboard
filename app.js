@@ -778,8 +778,14 @@ function createForecastChart() {
         forecastChart.destroy();
     }
 
-    const datasets = [
-        {
+    // Check of we vlagen data hebben (niet allemaal 0)
+    const hasGusts = gusts.some(g => g > 0);
+
+    const datasets = [];
+
+    // Voeg vlagen alleen toe als we data hebben
+    if (hasGusts) {
+        datasets.push({
             label: `Vlagen (${getCurrentUnitLabel()})`,
             data: gusts,
             backgroundColor: '#f97316',
@@ -789,19 +795,22 @@ function createForecastChart() {
             stack: 'wind',
             yAxisID: 'y',
             order: 2
-        },
-        {
-            label: `Wind (${getCurrentUnitLabel()})`,
-            data: speeds,
-            backgroundColor: '#22c55e',
-            borderColor: '#16a34a',
-            borderWidth: 1,
-            borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 3, bottomRight: 3 },
-            stack: 'wind',
-            yAxisID: 'y',
-            order: 1
-        }
-    ];
+        });
+    }
+
+    datasets.push({
+        label: `Wind (${getCurrentUnitLabel()})`,
+        data: speeds,
+        backgroundColor: '#22c55e',
+        borderColor: '#16a34a',
+        borderWidth: 1,
+        borderRadius: hasGusts
+            ? { topLeft: 0, topRight: 0, bottomLeft: 3, bottomRight: 3 }
+            : { topLeft: 3, topRight: 3, bottomLeft: 3, bottomRight: 3 },
+        stack: 'wind',
+        yAxisID: 'y',
+        order: 1
+    });
 
     // Voeg golven toe als lijn
     if (waves.some(w => w !== null)) {
