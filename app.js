@@ -692,38 +692,93 @@ function createForecastChart() {
         }
     }
 
-    // Filter data tot alleen daglicht uren
-    for (let i = currentIndex; i < currentIndex + 24 && i < windData.hourly.time.length; i++) {
-        const time = new Date(windData.hourly.time[i]);
+    // Gebruik RWS forecast indien beschikbaar, anders Open-Meteo
+    const useRWSForecast = rwsForecastData && rwsForecastData.data && rwsForecastData.data.length > 0;
 
-        // Check of dit uur binnen daglicht valt
-        let isDaylight = true;
-        const timeDate = time.toISOString().slice(0, 10);
+    if (useRWSForecast) {
+        // RWS forecast data gebruiken
+        const now = new Date();
+        let pointsAdded = 0;
 
-        if (timeDate === todayDateStr && sunriseToday && sunsetToday) {
-            isDaylight = time >= sunriseToday && time <= sunsetToday;
-        } else if (sunriseTomorrow && sunsetTomorrow) {
-            isDaylight = time >= sunriseTomorrow && time <= sunsetTomorrow;
+        for (const point of rwsForecastData.data) {
+            if (pointsAdded >= 24) break; // Max 24 uur tonen
+
+            const time = new Date(point.tijdstip);
+
+            // Alleen toekomstige punten
+            if (time < now) continue;
+
+            // Check daglicht
+            let isDaylight = true;
+            const timeDate = time.toISOString().slice(0, 10);
+
+            if (timeDate === todayDateStr && sunriseToday && sunsetToday) {
+                isDaylight = time >= sunriseToday && time <= sunsetToday;
+            } else if (sunriseTomorrow && sunsetTomorrow) {
+                isDaylight = time >= sunriseTomorrow && time <= sunsetTomorrow;
+            }
+
+            if (!isDaylight) continue;
+
+            labels.push(time.getHours() + ':00');
+
+            // RWS geeft windsnelheid in m/s
+            const speedMS = point.windsnelheid;
+            const speedKmh = speedMS * 3.6;
+
+            const speedValue = parseFloat(formatWindSpeed(speedKmh, false));
+            speeds.push(speedValue);
+            gusts.push(0); // RWS geeft geen vlagen in forecast
+
+            // Golven uit Open-Meteo (RWS golf data momenteel niet beschikbaar)
+            const openMeteoIndex = windData.hourly.time.findIndex(t =>
+                new Date(t).getHours() === time.getHours() &&
+                new Date(t).toISOString().slice(0, 10) === timeDate
+            );
+            if (openMeteoIndex >= 0 && marineData && marineData.hourly.wave_height[openMeteoIndex] !== null) {
+                waves.push(marineData.hourly.wave_height[openMeteoIndex]);
+            } else {
+                waves.push(null);
+            }
+
+            pointsAdded++;
         }
 
-        if (!isDaylight) continue;
+        console.log('Forecast chart met RWS data:', pointsAdded, 'punten');
+    } else {
+        // Fallback: Open-Meteo forecast
+        for (let i = currentIndex; i < currentIndex + 24 && i < windData.hourly.time.length; i++) {
+            const time = new Date(windData.hourly.time[i]);
 
-        labels.push(time.getHours() + ':00');
+            // Check of dit uur binnen daglicht valt
+            let isDaylight = true;
+            const timeDate = time.toISOString().slice(0, 10);
 
-        const speedKmh = windData.hourly.wind_speed_10m[i];
-        const gustsKmh = windData.hourly.wind_gusts_10m[i];
+            if (timeDate === todayDateStr && sunriseToday && sunsetToday) {
+                isDaylight = time >= sunriseToday && time <= sunsetToday;
+            } else if (sunriseTomorrow && sunsetTomorrow) {
+                isDaylight = time >= sunriseTomorrow && time <= sunsetTomorrow;
+            }
 
-        // Converteer naar huidige eenheid
-        const speedValue = parseFloat(formatWindSpeed(speedKmh, false));
-        const gustsValue = parseFloat(formatWindSpeed(gustsKmh, false));
-        speeds.push(speedValue);
-        // Vlagen als extra bovenop wind (alleen het verschil)
-        gusts.push(Math.max(0, gustsValue - speedValue));
+            if (!isDaylight) continue;
 
-        if (marineData && marineData.hourly.wave_height[i] !== null) {
-            waves.push(marineData.hourly.wave_height[i]);
-        } else {
-            waves.push(null);
+            labels.push(time.getHours() + ':00');
+
+            const speedKmh = windData.hourly.wind_speed_10m[i];
+            const gustsKmh = windData.hourly.wind_gusts_10m[i];
+
+            // Converteer naar huidige eenheid
+            const speedValue = parseFloat(formatWindSpeed(speedKmh, false));
+            const gustsValue = parseFloat(formatWindSpeed(gustsKmh, false));
+            speeds.push(speedValue);
+            // Vlagen als extra bovenop wind (alleen het verschil)
+            gusts.push(Math.max(0, gustsValue - speedValue));
+
+            if (marineData && marineData.hourly.wave_height[i] !== null) {
+                waves.push(marineData.hourly.wave_height[i]);
+            } else {
+                waves.push(null);
+            }
         }
     }
 
@@ -953,36 +1008,93 @@ function createHourlyDisplay() {
     const container = document.getElementById('hourlyScroll');
     container.innerHTML = '';
 
-    for (let i = currentIndex; i < currentIndex + 24 && i < windData.hourly.time.length; i++) {
-        const time = new Date(windData.hourly.time[i]);
-        const speedKmh = windData.hourly.wind_speed_10m[i];
-        const gustsKmh = windData.hourly.wind_gusts_10m[i];
-        const direction = windData.hourly.wind_direction_10m[i];
+    // Gebruik RWS forecast indien beschikbaar
+    const useRWSForecast = rwsForecastData && rwsForecastData.data && rwsForecastData.data.length > 0;
 
-        const speed = formatWindSpeed(speedKmh, false);
-        const gusts = formatWindSpeed(gustsKmh, false);
+    if (useRWSForecast) {
+        // RWS forecast data gebruiken
+        const now = new Date();
+        let itemsAdded = 0;
+        let isFirst = true;
 
-        const item = document.createElement('div');
-        item.className = `hourly-item${i === currentIndex ? ' current' : ''}`;
+        for (const point of rwsForecastData.data) {
+            if (itemsAdded >= 24) break;
 
-        let waveHtml = '';
-        if (marineData && marineData.hourly.wave_height[i] !== null) {
-            waveHtml = `<div class="hourly-wave">🌊 ${marineData.hourly.wave_height[i].toFixed(1)}m</div>`;
+            const time = new Date(point.tijdstip);
+
+            // Alleen toekomstige punten
+            if (time < now) continue;
+
+            // RWS geeft windsnelheid in m/s
+            const speedMS = point.windsnelheid;
+            const speedKmh = speedMS * 3.6;
+            const direction = point.windrichting;
+
+            const speed = formatWindSpeed(speedKmh, false);
+
+            const item = document.createElement('div');
+            item.className = `hourly-item${isFirst ? ' current' : ''}`;
+            isFirst = false;
+
+            // Golven uit Open-Meteo
+            let waveHtml = '';
+            const timeDate = time.toISOString().slice(0, 10);
+            const openMeteoIndex = windData.hourly.time.findIndex(t =>
+                new Date(t).getHours() === time.getHours() &&
+                new Date(t).toISOString().slice(0, 10) === timeDate
+            );
+            if (openMeteoIndex >= 0 && marineData && marineData.hourly.wave_height[openMeteoIndex] !== null) {
+                waveHtml = `<div class="hourly-wave">🌊 ${marineData.hourly.wave_height[openMeteoIndex].toFixed(1)}m</div>`;
+            }
+
+            item.innerHTML = `
+                <div class="hourly-time">${time.getHours()}:00</div>
+                <div class="hourly-speed">${speed}</div>
+                <div class="hourly-label">${getCurrentUnitLabel()}</div>
+                <div class="hourly-gusts">⚡ --</div>
+                ${waveHtml}
+                <div class="hourly-direction">
+                    <span class="hourly-arrow" style="transform: rotate(${direction}deg)">↓</span>
+                    ${getDirectionName(direction)}
+                </div>
+            `;
+
+            container.appendChild(item);
+            itemsAdded++;
         }
+    } else {
+        // Fallback: Open-Meteo data
+        for (let i = currentIndex; i < currentIndex + 24 && i < windData.hourly.time.length; i++) {
+            const time = new Date(windData.hourly.time[i]);
+            const speedKmh = windData.hourly.wind_speed_10m[i];
+            const gustsKmh = windData.hourly.wind_gusts_10m[i];
+            const direction = windData.hourly.wind_direction_10m[i];
 
-        item.innerHTML = `
-            <div class="hourly-time">${time.getHours()}:00</div>
-            <div class="hourly-speed">${speed}</div>
-            <div class="hourly-label">${getCurrentUnitLabel()}</div>
-            <div class="hourly-gusts">⚡ ${gusts}</div>
-            ${waveHtml}
-            <div class="hourly-direction">
-                <span class="hourly-arrow" style="transform: rotate(${direction}deg)">↓</span>
-                ${getDirectionName(direction)}
-            </div>
-        `;
+            const speed = formatWindSpeed(speedKmh, false);
+            const gusts = formatWindSpeed(gustsKmh, false);
 
-        container.appendChild(item);
+            const item = document.createElement('div');
+            item.className = `hourly-item${i === currentIndex ? ' current' : ''}`;
+
+            let waveHtml = '';
+            if (marineData && marineData.hourly.wave_height[i] !== null) {
+                waveHtml = `<div class="hourly-wave">🌊 ${marineData.hourly.wave_height[i].toFixed(1)}m</div>`;
+            }
+
+            item.innerHTML = `
+                <div class="hourly-time">${time.getHours()}:00</div>
+                <div class="hourly-speed">${speed}</div>
+                <div class="hourly-label">${getCurrentUnitLabel()}</div>
+                <div class="hourly-gusts">⚡ ${gusts}</div>
+                ${waveHtml}
+                <div class="hourly-direction">
+                    <span class="hourly-arrow" style="transform: rotate(${direction}deg)">↓</span>
+                    ${getDirectionName(direction)}
+                </div>
+            `;
+
+            container.appendChild(item);
+        }
     }
 }
 
