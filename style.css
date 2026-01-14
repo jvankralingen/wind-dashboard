@@ -799,14 +799,33 @@ body {
 }
 
 /* Grafiek - Mobile */
+.chart-wrapper {
+    display: flex;
+    align-items: stretch;
+    margin: 0 -0.875rem;
+}
+
+.chart-y-axis {
+    flex-shrink: 0;
+    width: 45px;
+    height: 180px;
+    padding-left: 0.875rem;
+}
+
+.chart-y-axis-right {
+    flex-shrink: 0;
+    width: 35px;
+    height: 180px;
+    padding-right: 0.875rem;
+}
+
 .chart-scroll-container {
+    flex: 1;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    margin: 0 -0.875rem;
-    padding: 0 0.875rem;
 }
 
 .chart-scroll-container::-webkit-scrollbar {

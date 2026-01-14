@@ -1030,37 +1030,28 @@ function createForecastChart() {
                 },
                 y: {
                     type: 'linear',
-                    display: true,
+                    display: false, // Verberg in scrollende chart
                     position: 'left',
                     grid: {
                         color: 'rgba(148, 163, 184, 0.1)'
-                    },
-                    ticks: {
-                        color: '#22c55e',
-                        callback: function(value) {
-                            return value + ' ' + getCurrentUnitLabel();
-                        }
                     },
                     beginAtZero: true
                 },
                 y1: {
                     type: 'linear',
-                    display: waves.some(w => w !== null),
+                    display: false, // Verberg in scrollende chart
                     position: 'right',
                     grid: {
                         drawOnChartArea: false
-                    },
-                    ticks: {
-                        color: '#38bdf8',
-                        callback: function(value) {
-                            return value + ' m';
-                        }
                     },
                     beginAtZero: true
                 }
             }
         }
     });
+
+    // Teken vaste Y-assen
+    drawFixedYAxes(speeds, waves);
 
     // Scroll naar "nu" - door de margin staat nu op 1/5 van links
     if (scrollContainer && nowIndex >= 0) {
@@ -1074,6 +1065,84 @@ function createForecastChart() {
         // Verwijder oude listener
         scrollContainer.removeEventListener('scroll', handleChartScroll);
         scrollContainer.addEventListener('scroll', handleChartScroll);
+    }
+}
+
+// Teken vaste Y-assen naast de scrollende chart
+function drawFixedYAxes(speeds, waves) {
+    const hasWaves = waves && waves.some(w => w !== null);
+
+    // Bereken max waardes
+    const maxSpeed = Math.max(...speeds.filter(s => s !== null), 1);
+    const maxWave = hasWaves ? Math.max(...waves.filter(w => w !== null), 0.5) : 0;
+
+    // Linker Y-as (wind)
+    const leftCanvas = document.getElementById('yAxisCanvas');
+    if (leftCanvas) {
+        const ctx = leftCanvas.getContext('2d');
+        const width = leftCanvas.width;
+        const height = leftCanvas.height;
+
+        ctx.clearRect(0, 0, width, height);
+
+        // Bepaal stappen
+        const niceMax = Math.ceil(maxSpeed / 5) * 5;
+        const step = niceMax <= 20 ? 5 : 10;
+
+        ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = '#22c55e';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        // Teken labels van onder naar boven
+        const padding = 25; // Ruimte voor x-as labels onderaan
+        const chartHeight = height - padding;
+
+        for (let val = 0; val <= niceMax; val += step) {
+            const y = height - padding - (val / niceMax) * chartHeight;
+            ctx.fillText(val + '', width - 5, y);
+        }
+
+        // Eenheid label bovenaan
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(getCurrentUnitLabel(), width - 5, 8);
+    }
+
+    // Rechter Y-as (golven)
+    const rightCanvas = document.getElementById('yAxisCanvasRight');
+    if (rightCanvas && hasWaves) {
+        const ctx = rightCanvas.getContext('2d');
+        const width = rightCanvas.width;
+        const height = rightCanvas.height;
+
+        ctx.clearRect(0, 0, width, height);
+
+        // Bepaal stappen
+        const niceMax = Math.ceil(maxWave * 2) / 2; // Rond af naar 0.5
+        const step = niceMax <= 2 ? 0.5 : 1;
+
+        ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        const padding = 25;
+        const chartHeight = height - padding;
+
+        for (let val = 0; val <= niceMax; val += step) {
+            const y = height - padding - (val / niceMax) * chartHeight;
+            ctx.fillText(val.toFixed(1), 5, y);
+        }
+
+        // Eenheid label bovenaan
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('m', 5, 8);
+    } else if (rightCanvas) {
+        // Geen golf data - maak canvas leeg
+        const ctx = rightCanvas.getContext('2d');
+        ctx.clearRect(0, 0, rightCanvas.width, rightCanvas.height);
     }
 }
 

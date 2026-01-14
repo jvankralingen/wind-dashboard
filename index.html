@@ -168,9 +168,17 @@
             <!-- 96-uurs grafiek (48u terug + 48u vooruit) -->
             <section class="card forecast-card">
                 <h2>Wind & Golven <span class="chart-range" id="chartRange">← swipe →</span></h2>
-                <div class="chart-scroll-container" id="chartScrollContainer">
-                    <div class="chart-inner" id="chartInner">
-                        <canvas id="forecastChart"></canvas>
+                <div class="chart-wrapper">
+                    <div class="chart-y-axis" id="chartYAxis">
+                        <canvas id="yAxisCanvas" width="45" height="180"></canvas>
+                    </div>
+                    <div class="chart-scroll-container" id="chartScrollContainer">
+                        <div class="chart-inner" id="chartInner">
+                            <canvas id="forecastChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-y-axis-right" id="chartYAxisRight">
+                        <canvas id="yAxisCanvasRight" width="35" height="180"></canvas>
                     </div>
                 </div>
             </section>
