@@ -532,6 +532,22 @@ body {
     order: 1;
 }
 
+.current-conditions h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.conditions-time {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.conditions-time.scrolling {
+    color: #f59e0b;
+}
+
 .summary-card {
     grid-column: span 2;
     order: 2;

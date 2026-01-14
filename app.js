@@ -835,15 +835,22 @@ function createForecastChart() {
         const speedValue = parseFloat(formatWindSpeed(speedKmh, false));
         speeds.push(speedValue);
 
-        // Kleur: verleden = gedimde kleur, toekomst = volle kleur
-        const isPast = time < now;
-        barColors.push(isPast ? 'rgba(34, 197, 94, 0.4)' : '#22c55e');
-
         // Vind "nu" index (dichtstbijzijnde punt)
-        if (nowIndex === -1 && time >= now) {
+        const isNow = nowIndex === -1 && time >= now;
+        if (isNow) {
             nowIndex = i;
             // Markeer "nu" in het label
-            labels[labels.length - 1] = '▶ NU';
+            labels[labels.length - 1] = 'NU';
+        }
+
+        // Kleur: verleden = gedimde kleur, NU = oranje highlight, toekomst = volle kleur
+        const isPast = time < now;
+        if (isNow) {
+            barColors.push('#f59e0b'); // Oranje voor NU
+        } else if (isPast) {
+            barColors.push('rgba(34, 197, 94, 0.4)');
+        } else {
+            barColors.push('#22c55e');
         }
 
         // Golf data van Open-Meteo
@@ -870,7 +877,11 @@ function createForecastChart() {
         label: `Wind (${getCurrentUnitLabel()})`,
         data: speeds,
         backgroundColor: barColors,
-        borderColor: barColors.map(c => c === '#22c55e' ? '#16a34a' : 'rgba(22, 163, 74, 0.4)'),
+        borderColor: barColors.map(c => {
+            if (c === '#f59e0b') return '#d97706'; // Oranje border voor NU
+            if (c === '#22c55e') return '#16a34a';
+            return 'rgba(22, 163, 74, 0.4)';
+        }),
         borderWidth: 1,
         borderRadius: 3,
         yAxisID: 'y',
@@ -912,12 +923,43 @@ function createForecastChart() {
     canvas.width = chartWidth;
     canvas.height = 180;
 
+    // Sla chart data op voor scroll-interactie
+    window.chartDataPoints = filteredPoints;
+    window.chartNowIndex = nowIndex;
+    window.chartBarWidth = barWidth;
+
+    // Plugin voor verticale "NU" lijn
+    const nowLinePlugin = {
+        id: 'nowLine',
+        afterDraw: (chart) => {
+            if (nowIndex < 0) return;
+            const ctx = chart.ctx;
+            const xAxis = chart.scales.x;
+            const yAxis = chart.scales.y;
+
+            // X positie van de "NU" bar
+            const x = xAxis.getPixelForValue(nowIndex);
+
+            // Teken verticale lijn
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([5, 3]);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.moveTo(x, yAxis.top);
+            ctx.lineTo(x, yAxis.bottom);
+            ctx.stroke();
+            ctx.restore();
+        }
+    };
+
     forecastChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: datasets
         },
+        plugins: [nowLinePlugin],
         options: {
             responsive: false,
             maintainAspectRatio: false,
@@ -993,6 +1035,107 @@ function createForecastChart() {
             scrollContainer.scrollLeft = scrollTo;
         }, 100);
     }
+
+    // Scroll listener voor live update van samenvatting
+    if (scrollContainer) {
+        // Verwijder oude listener
+        scrollContainer.removeEventListener('scroll', handleChartScroll);
+        scrollContainer.addEventListener('scroll', handleChartScroll);
+    }
+}
+
+// Debounce timer voor scroll reset
+let scrollResetTimer = null;
+
+// Handler voor chart scroll - update samenvatting met waardes van zichtbaar punt
+function handleChartScroll() {
+    const scrollContainer = document.getElementById('chartScrollContainer');
+    const chartPoints = window.chartDataPoints;
+    const barWidth = window.chartBarWidth || 30;
+    const nowIndex = window.chartNowIndex;
+
+    if (!scrollContainer || !chartPoints || chartPoints.length === 0) return;
+
+    // Bereken welke bar in het midden van het scherm is
+    const scrollLeft = scrollContainer.scrollLeft;
+    const containerWidth = scrollContainer.clientWidth;
+    const centerX = scrollLeft + containerWidth / 2;
+    const centerIndex = Math.round(centerX / barWidth);
+
+    // Begrens tot geldige index
+    const pointIndex = Math.max(0, Math.min(centerIndex, chartPoints.length - 1));
+    const point = chartPoints[pointIndex];
+
+    if (!point) return;
+
+    // Update titel en tijd
+    const titleEl = document.getElementById('conditionsTitle');
+    const timeEl = document.getElementById('conditionsTime');
+
+    const isAtNow = Math.abs(pointIndex - nowIndex) <= 1;
+
+    if (isAtNow) {
+        // Bij "nu" - toon normale weergave
+        titleEl.textContent = 'Nu';
+        timeEl.textContent = '';
+        timeEl.classList.remove('scrolling');
+
+        // Reset naar actuele waardes
+        updateCurrentConditions();
+    } else {
+        // Bij ander tijdstip - toon datum/tijd
+        const time = point.time;
+        const dayNames = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
+        const dayName = dayNames[time.getDay()];
+        const hours = time.getHours().toString().padStart(2, '0');
+
+        titleEl.textContent = point.type === 'verleden' ? 'Was' : 'Wordt';
+        timeEl.textContent = `${dayName} ${hours}:00`;
+        timeEl.classList.add('scrolling');
+
+        // Update wind waarde
+        const speedMS = point.windsnelheid;
+        const speedKmh = speedMS * 3.6;
+        document.getElementById('currentSpeed').textContent = formatWindSpeed(speedKmh, false);
+
+        // Zoek bijbehorende wind richting in Open-Meteo data
+        const timeStr = time.toISOString().slice(0, 13);
+        if (windData && windData.hourly) {
+            const idx = windData.hourly.time.findIndex(t => t.startsWith(timeStr.slice(0, 13)));
+            if (idx >= 0) {
+                const dir = windData.hourly.wind_direction_10m[idx];
+                updateWindDirection(dir);
+
+                // Update golf data als beschikbaar
+                if (marineData && marineData.hourly) {
+                    const waveHeight = marineData.hourly.wave_height[idx];
+                    const wavePeriod = marineData.hourly.wave_period[idx];
+                    const waveDir = marineData.hourly.wave_direction[idx];
+
+                    if (waveHeight !== null) {
+                        document.getElementById('waveHeight').textContent = waveHeight.toFixed(1);
+                    }
+                    if (wavePeriod !== null) {
+                        document.getElementById('wavePeriod').textContent = Math.round(wavePeriod);
+                    }
+                    if (waveDir !== null) {
+                        document.getElementById('waveDirection').textContent = getDirectionName(waveDir);
+                    }
+                }
+            }
+        }
+    }
+
+    // Reset naar "nu" na 3 seconden zonder scrollen
+    clearTimeout(scrollResetTimer);
+    scrollResetTimer = setTimeout(() => {
+        const titleEl = document.getElementById('conditionsTitle');
+        const timeEl = document.getElementById('conditionsTime');
+        titleEl.textContent = 'Nu';
+        timeEl.textContent = '';
+        timeEl.classList.remove('scrolling');
+        updateCurrentConditions();
+    }, 3000);
 }
 
 // Weekvoorspelling maken
