@@ -927,27 +927,54 @@ function createForecastChart() {
     window.chartDataPoints = filteredPoints;
     window.chartNowIndex = nowIndex;
     window.chartBarWidth = barWidth;
+    window.chartActiveIndex = nowIndex; // Actieve index (begint bij nu)
 
-    // Plugin voor verticale "NU" lijn
-    const nowLinePlugin = {
-        id: 'nowLine',
-        afterDraw: (chart) => {
-            if (nowIndex < 0) return;
+    // Plugin voor achtergrondkader bij actieve bar
+    const activeBarPlugin = {
+        id: 'activeBar',
+        beforeDraw: (chart) => {
+            const activeIndex = window.chartActiveIndex;
+            if (activeIndex < 0 || activeIndex >= chart.data.labels.length) return;
+
             const ctx = chart.ctx;
             const xAxis = chart.scales.x;
             const yAxis = chart.scales.y;
+            const meta = chart.getDatasetMeta(0);
 
-            // X positie van de "NU" bar
-            const x = xAxis.getPixelForValue(nowIndex);
+            if (!meta.data[activeIndex]) return;
 
-            // Teken verticale lijn
+            // Bereken positie en breedte van de actieve bar
+            const bar = meta.data[activeIndex];
+            const barWidth = bar.width || 20;
+            const padding = 4;
+
+            // Teken achtergrondkader
             ctx.save();
-            ctx.beginPath();
-            ctx.setLineDash([5, 3]);
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.15)'; // Oranje met lage opacity
             ctx.strokeStyle = '#f59e0b';
             ctx.lineWidth = 2;
-            ctx.moveTo(x, yAxis.top);
-            ctx.lineTo(x, yAxis.bottom);
+            ctx.setLineDash([]);
+
+            const x = bar.x - barWidth / 2 - padding;
+            const y = yAxis.top;
+            const width = barWidth + padding * 2;
+            const height = yAxis.bottom - yAxis.top;
+
+            // Rounded rectangle
+            const radius = 4;
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+
+            ctx.fill();
             ctx.stroke();
             ctx.restore();
         }
@@ -959,7 +986,7 @@ function createForecastChart() {
             labels: labels,
             datasets: datasets
         },
-        plugins: [nowLinePlugin],
+        plugins: [activeBarPlugin],
         options: {
             responsive: false,
             maintainAspectRatio: false,
@@ -1068,6 +1095,14 @@ function handleChartScroll() {
 
     if (!point) return;
 
+    // Update actieve index en herteken chart
+    if (window.chartActiveIndex !== pointIndex) {
+        window.chartActiveIndex = pointIndex;
+        if (forecastChart) {
+            forecastChart.draw();
+        }
+    }
+
     // Update titel en tijd
     const titleEl = document.getElementById('conditionsTitle');
     const timeEl = document.getElementById('conditionsTime');
@@ -1077,20 +1112,22 @@ function handleChartScroll() {
     if (isAtNow) {
         // Bij "nu" - toon normale weergave
         titleEl.textContent = 'Nu';
+        titleEl.classList.add('now-active');
         timeEl.textContent = '';
         timeEl.classList.remove('scrolling');
 
         // Reset naar actuele waardes
         updateCurrentConditions();
     } else {
+        titleEl.classList.remove('now-active');
         // Bij ander tijdstip - toon datum/tijd
         const time = point.time;
         const dayNames = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
         const dayName = dayNames[time.getDay()];
         const hours = time.getHours().toString().padStart(2, '0');
 
-        titleEl.textContent = point.type === 'verleden' ? 'Was' : 'Wordt';
-        timeEl.textContent = `${dayName} ${hours}:00`;
+        titleEl.textContent = `${dayName} ${hours}:00`;
+        timeEl.textContent = '';
         timeEl.classList.add('scrolling');
 
         // Update wind waarde

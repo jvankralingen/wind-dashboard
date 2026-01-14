@@ -548,6 +548,10 @@ body {
     color: #f59e0b;
 }
 
+#conditionsTitle.now-active {
+    color: #f59e0b;
+}
+
 .summary-card {
     grid-column: span 2;
     order: 2;
