@@ -1095,18 +1095,19 @@ function drawFixedYAxes(speeds, waves) {
         ctx.textBaseline = 'middle';
 
         // Teken labels van onder naar boven
-        const padding = 25; // Ruimte voor x-as labels onderaan
-        const chartHeight = height - padding;
+        const paddingTop = 15; // Ruimte bovenaan voor hoogste getal
+        const paddingBottom = 25; // Ruimte voor x-as labels onderaan
+        const chartHeight = height - paddingTop - paddingBottom;
 
         for (let val = 0; val <= niceMax; val += step) {
-            const y = height - padding - (val / niceMax) * chartHeight;
+            const y = height - paddingBottom - (val / niceMax) * chartHeight;
             ctx.fillText(val + '', width - 5, y);
         }
 
         // Eenheid label bovenaan
         ctx.fillStyle = '#94a3b8';
         ctx.font = '9px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.fillText(getCurrentUnitLabel(), width - 5, 8);
+        ctx.fillText(getCurrentUnitLabel(), width - 5, 6);
     }
 
     // Rechter Y-as (golven)
@@ -1127,18 +1128,19 @@ function drawFixedYAxes(speeds, waves) {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
-        const padding = 25;
-        const chartHeight = height - padding;
+        const paddingTop = 15;
+        const paddingBottom = 25;
+        const chartHeight = height - paddingTop - paddingBottom;
 
         for (let val = 0; val <= niceMax; val += step) {
-            const y = height - padding - (val / niceMax) * chartHeight;
+            const y = height - paddingBottom - (val / niceMax) * chartHeight;
             ctx.fillText(val.toFixed(1), 5, y);
         }
 
         // Eenheid label bovenaan
         ctx.fillStyle = '#94a3b8';
         ctx.font = '9px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.fillText('m', 5, 8);
+        ctx.fillText('m', 5, 6);
     } else if (rightCanvas) {
         // Geen golf data - maak canvas leeg
         const ctx = rightCanvas.getContext('2d');
