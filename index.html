@@ -167,9 +167,11 @@
 
             <!-- 96-uurs grafiek (48u terug + 48u vooruit) -->
             <section class="card forecast-card">
-                <h2>Wind & Golven <span class="chart-range">48u terug — nu — 48u vooruit</span></h2>
-                <div class="chart-container">
-                    <canvas id="forecastChart"></canvas>
+                <h2>Wind & Golven <span class="chart-range" id="chartRange">← swipe →</span></h2>
+                <div class="chart-scroll-container" id="chartScrollContainer">
+                    <div class="chart-inner" id="chartInner">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
                 </div>
             </section>
 

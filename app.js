@@ -819,6 +819,8 @@ function createForecastChart() {
         // Vind "nu" index (dichtstbijzijnde punt)
         if (nowIndex === -1 && time >= now) {
             nowIndex = i;
+            // Markeer "nu" in het label
+            labels[labels.length - 1] = '▶ NU';
         }
 
         // Golf data van Open-Meteo
@@ -872,6 +874,21 @@ function createForecastChart() {
 
     console.log('Chart data:', { points: filteredPoints.length, nowIndex });
 
+    // Bereken breedte: 30px per bar, minimum container breedte
+    const barWidth = 30;
+    const chartWidth = Math.max(filteredPoints.length * barWidth, 600);
+    const chartInner = document.getElementById('chartInner');
+    const scrollContainer = document.getElementById('chartScrollContainer');
+
+    if (chartInner) {
+        chartInner.style.width = chartWidth + 'px';
+    }
+
+    // Canvas afmetingen instellen
+    const canvas = document.getElementById('forecastChart');
+    canvas.width = chartWidth;
+    canvas.height = 180;
+
     forecastChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -879,7 +896,7 @@ function createForecastChart() {
             datasets: datasets
         },
         options: {
-            responsive: true,
+            responsive: false,
             maintainAspectRatio: false,
             interaction: {
                 intersect: false,
@@ -887,16 +904,7 @@ function createForecastChart() {
             },
             plugins: {
                 legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: '#94a3b8',
-                        usePointStyle: true,
-                        padding: 15,
-                        font: {
-                            size: 11
-                        }
-                    }
+                    display: false
                 },
                 tooltip: {
                     backgroundColor: '#1e293b',
@@ -915,8 +923,10 @@ function createForecastChart() {
                     ticks: {
                         color: '#94a3b8',
                         font: {
-                            size: 10
-                        }
+                            size: 9
+                        },
+                        maxRotation: 45,
+                        minRotation: 45
                     }
                 },
                 y: {
@@ -952,6 +962,14 @@ function createForecastChart() {
             }
         }
     });
+
+    // Scroll naar "nu" (iets links ervan zodat je context hebt)
+    if (scrollContainer && nowIndex > 0) {
+        const scrollTo = Math.max(0, (nowIndex - 4) * barWidth);
+        setTimeout(() => {
+            scrollContainer.scrollLeft = scrollTo;
+        }, 100);
+    }
 }
 
 // Weekvoorspelling maken

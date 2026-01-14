@@ -779,9 +779,24 @@ body {
 }
 
 /* Grafiek - Mobile */
-.chart-container {
+.chart-scroll-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    margin: 0 -0.875rem;
+    padding: 0 0.875rem;
+}
+
+.chart-scroll-container::-webkit-scrollbar {
+    display: none;
+}
+
+.chart-inner {
     height: 180px;
     position: relative;
+    /* Breedte wordt dynamisch ingesteld door JS */
 }
 
 .chart-range {
