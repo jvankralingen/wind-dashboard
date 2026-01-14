@@ -1055,10 +1055,12 @@ function createForecastChart() {
         }
     });
 
-    // Scroll naar "nu" (iets links ervan zodat je context hebt)
-    if (scrollContainer && nowIndex > 0) {
-        const scrollTo = Math.max(0, (nowIndex - 4) * barWidth);
+    // Scroll naar "nu" op 1/5 van links (zodat je meer toekomst ziet)
+    if (scrollContainer && nowIndex >= 0) {
         setTimeout(() => {
+            const containerWidth = scrollContainer.clientWidth;
+            const targetPosition = containerWidth / 5; // 1/5 van links
+            const scrollTo = Math.max(0, (nowIndex * barWidth) - targetPosition);
             scrollContainer.scrollLeft = scrollTo;
         }, 100);
     }
@@ -1083,14 +1085,14 @@ function handleChartScroll() {
 
     if (!scrollContainer || !chartPoints || chartPoints.length === 0) return;
 
-    // Bereken welke bar in het midden van het scherm is
+    // Bereken welke bar op 1/5 van links staat (daar is de highlight)
     const scrollLeft = scrollContainer.scrollLeft;
     const containerWidth = scrollContainer.clientWidth;
-    const centerX = scrollLeft + containerWidth / 2;
-    const centerIndex = Math.round(centerX / barWidth);
+    const targetX = scrollLeft + containerWidth / 5; // 1/5 van links
+    const activeIndex = Math.round(targetX / barWidth);
 
     // Begrens tot geldige index
-    const pointIndex = Math.max(0, Math.min(centerIndex, chartPoints.length - 1));
+    const pointIndex = Math.max(0, Math.min(activeIndex, chartPoints.length - 1));
     const point = chartPoints[pointIndex];
 
     if (!point) return;
