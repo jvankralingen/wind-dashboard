@@ -802,18 +802,22 @@ body {
 .chart-wrapper {
     display: flex;
     align-items: stretch;
+    margin-left: -0.875rem;
+    margin-right: -0.875rem;
 }
 
 .chart-y-axis {
     flex-shrink: 0;
     width: 40px;
     height: 180px;
+    padding-left: 0.5rem;
 }
 
 .chart-y-axis-right {
     flex-shrink: 0;
     width: 30px;
     height: 180px;
+    padding-right: 0.5rem;
 }
 
 .chart-scroll-container {
