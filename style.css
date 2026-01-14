@@ -808,9 +808,10 @@ body {
 
 .chart-y-axis {
     flex-shrink: 0;
-    width: 40px;
+    width: 48px;
     height: 180px;
     padding-left: 0.5rem;
+    padding-right: 0.5rem;
 }
 
 .chart-y-axis-right {
