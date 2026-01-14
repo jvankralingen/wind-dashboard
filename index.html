@@ -95,88 +95,87 @@
             <!-- Huidige condities -->
             <section class="card current-conditions">
                 <h2>Nu</h2>
-                <div class="current-combined">
-                    <!-- Wind primair -->
-                    <div class="wind-primary">
-                        <div class="wind-main">
-                            <span class="wind-speed" id="currentSpeed">--</span>
-                            <span class="wind-unit" id="windUnit">kn</span>
+                <div class="current-grid">
+                    <!-- Wind -->
+                    <div class="current-item current-wind">
+                        <div class="current-main">
+                            <span class="current-value" id="currentSpeed">--</span>
+                            <span class="current-unit" id="windUnit">kn</span>
                         </div>
-                        <div class="wind-gusts">
-                            <span class="gusts-value" id="currentGusts">--</span>
-                            <span class="wind-unit" id="gustsUnit">kn</span>
-                        </div>
-                        <div class="wind-direction">
+                        <div class="current-label">Wind</div>
+                    </div>
+
+                    <!-- Windrichting -->
+                    <div class="current-item current-direction">
+                        <div class="current-main">
                             <span class="direction-arrow" id="directionArrow">↓</span>
-                            <span class="direction-name" id="directionText">--</span>
+                            <span class="current-value direction-degrees" id="directionDegrees">--°</span>
                         </div>
+                        <div class="current-label" id="directionText">--</div>
                     </div>
 
-                    <!-- Secundaire info -->
-                    <div class="secondary-info">
-                        <!-- Gear advies -->
-                        <div class="gear-advice" id="gearAdvice">
-                            <span class="gear-sail" id="gearSail">--</span>
-                            <span class="gear-board" id="gearBoard">--</span>
+                    <!-- Golfhoogte -->
+                    <div class="current-item">
+                        <div class="current-main">
+                            <span class="current-value" id="waveHeight">--</span>
+                            <span class="current-unit">m</span>
                         </div>
-                        <!-- Golven -->
-                        <div class="info-row">
-                            <span class="info-label">Golf</span>
-                            <span class="info-value"><span id="waveHeight">--</span>m</span>
-                            <span class="info-detail"><span id="wavePeriod">--</span>s <span id="waveDirection">--</span></span>
-                        </div>
-                        <!-- Getij -->
-                        <div class="info-row tide-row" id="tideRow">
-                            <span class="info-label">Getij</span>
-                            <span class="tide-direction" id="tideDirection">--</span>
-                            <span class="tide-times" id="tideTimes">--</span>
-                        </div>
+                        <div class="current-label">Golfhoogte</div>
                     </div>
+
+                    <!-- Golfperiode -->
+                    <div class="current-item">
+                        <div class="current-main">
+                            <span class="current-value" id="wavePeriod">--</span>
+                            <span class="current-unit">s</span>
+                        </div>
+                        <div class="current-label">Periode</div>
+                    </div>
+
+                    <!-- Golfrichting -->
+                    <div class="current-item">
+                        <div class="current-main">
+                            <span class="current-value" id="waveDirection">--</span>
+                        </div>
+                        <div class="current-label">Golfrichting</div>
+                    </div>
+
+                    <!-- Getijden -->
+                    <div class="current-item current-tide">
+                        <div class="tide-times">
+                            <div class="tide-next">
+                                <span class="tide-icon" id="tideIcon">↑</span>
+                                <span class="tide-time" id="nextTideTime">--:--</span>
+                                <span class="tide-type" id="nextTideType">HW</span>
+                            </div>
+                            <div class="tide-after">
+                                <span class="tide-icon" id="tideIconAfter">↓</span>
+                                <span class="tide-time" id="afterTideTime">--:--</span>
+                                <span class="tide-type" id="afterTideType">LW</span>
+                            </div>
+                        </div>
+                        <div class="current-label">Getij</div>
+                    </div>
+                </div>
+
+                <!-- Gear advies -->
+                <div class="gear-advice" id="gearAdvice">
+                    <span class="gear-sail" id="gearSail">--</span>
+                    <span class="gear-board" id="gearBoard">--</span>
                 </div>
             </section>
 
-            <!-- Samenvatting vandaag -->
-            <section class="card summary-card">
-                <h2>Vandaag</h2>
-                <div class="summary-grid">
-                    <div class="summary-item">
-                        <span class="summary-label">Gem. wind</span>
-                        <span class="summary-value" id="avgSpeed">--</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Max. wind</span>
-                        <span class="summary-value" id="maxSpeed">--</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Max. vlagen</span>
-                        <span class="summary-value" id="maxGusts">--</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Max. golf</span>
-                        <span class="summary-value" id="maxWave">--</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 24-uurs voorspelling grafiek -->
+            <!-- 96-uurs grafiek (48u terug + 48u vooruit) -->
             <section class="card forecast-card">
-                <h2>Komende 24 uur</h2>
+                <h2>Wind & Golven <span class="chart-range">48u terug — nu — 48u vooruit</span></h2>
                 <div class="chart-container">
                     <canvas id="forecastChart"></canvas>
                 </div>
             </section>
 
-            <!-- Uurlijkse voorspelling -->
-            <section class="card hourly-card">
-                <h2>Per uur</h2>
-                <div class="hourly-scroll" id="hourlyScroll">
-                    <!-- Wordt gevuld door JS -->
-                </div>
-            </section>
-
-            <!-- Meerdaagse voorspelling -->
+            <!-- Meerdaagse voorspelling (optioneel) -->
             <section class="card weekly-card">
-                <h2>Komende 7 dagen</h2>
+                <h2>Komende dagen</h2>
                 <div class="weekly-forecast" id="weeklyForecast">
                     <!-- Wordt gevuld door JS -->
                 </div>

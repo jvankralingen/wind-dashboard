@@ -133,7 +133,85 @@ function updateWindDirection(degrees) {
         // Pijl wijst naar waar de wind naartoe gaat (degrees + 180)
         arrow.style.transform = `rotate(${degrees}deg)`;
     }
+
+    const degreesEl = document.getElementById('directionDegrees');
+    if (degreesEl) {
+        degreesEl.textContent = `${Math.round(degrees)}°`;
+    }
+
     document.getElementById('directionText').textContent = getDirectionName(degrees);
+}
+
+// Golf info updaten (van Open-Meteo marine API)
+function updateWaveInfo() {
+    if (!marineData || !marineData.hourly) return;
+
+    const waveHeight = marineData.hourly.wave_height[currentIndex];
+    const wavePeriod = marineData.hourly.wave_period[currentIndex];
+    const waveDirection = marineData.hourly.wave_direction ? marineData.hourly.wave_direction[currentIndex] : null;
+
+    const heightEl = document.getElementById('waveHeight');
+    const periodEl = document.getElementById('wavePeriod');
+    const directionEl = document.getElementById('waveDirection');
+
+    if (heightEl) {
+        heightEl.textContent = waveHeight !== null ? waveHeight.toFixed(1) : '--';
+    }
+    if (periodEl) {
+        periodEl.textContent = wavePeriod !== null ? Math.round(wavePeriod) : '--';
+    }
+    if (directionEl) {
+        directionEl.textContent = waveDirection !== null ? getDirectionName(waveDirection) : '--';
+    }
+}
+
+// Getijden info updaten
+function updateTideInfo() {
+    if (!tideData || !tideData.extremes || tideData.extremes.length === 0) {
+        return;
+    }
+
+    const now = new Date();
+    const extremes = tideData.extremes;
+
+    // Vind de volgende twee getijden
+    let nextTide = null;
+    let afterTide = null;
+
+    for (let i = 0; i < extremes.length; i++) {
+        const tideTime = new Date(extremes[i].time);
+        if (tideTime > now) {
+            nextTide = extremes[i];
+            if (i + 1 < extremes.length) {
+                afterTide = extremes[i + 1];
+            }
+            break;
+        }
+    }
+
+    // Update volgende getij
+    const nextTimeEl = document.getElementById('nextTideTime');
+    const nextTypeEl = document.getElementById('nextTideType');
+    const nextIconEl = document.getElementById('tideIcon');
+
+    if (nextTide && nextTimeEl) {
+        const nextTime = new Date(nextTide.time);
+        nextTimeEl.textContent = nextTime.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        nextTypeEl.textContent = nextTide.type === 'high' ? 'HW' : 'LW';
+        nextIconEl.textContent = nextTide.type === 'high' ? '↑' : '↓';
+    }
+
+    // Update getij daarna
+    const afterTimeEl = document.getElementById('afterTideTime');
+    const afterTypeEl = document.getElementById('afterTideType');
+    const afterIconEl = document.getElementById('tideIconAfter');
+
+    if (afterTide && afterTimeEl) {
+        const afterTime = new Date(afterTide.time);
+        afterTimeEl.textContent = afterTime.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        afterTypeEl.textContent = afterTide.type === 'high' ? 'HW' : 'LW';
+        afterIconEl.textContent = afterTide.type === 'high' ? '↑' : '↓';
+    }
 }
 
 // Huidige eenheid label ophalen
@@ -225,7 +303,7 @@ function getStationDataForSpot(spot) {
 function updateCurrentConditions() {
     if (!windData) return;
 
-    let speedDisplay, gustsDisplay, direction;
+    let speedDisplay, direction;
 
     // Gebruik live RWS meetstationdata indien beschikbaar
     liveStationData = getStationDataForSpot(currentSpot);
@@ -233,24 +311,19 @@ function updateCurrentConditions() {
     if (liveStationData) {
         // RWS geeft windsnelheid in m/s, converteer naar gewenste eenheid
         const windSpeedMS = liveStationData.windspeed; // m/s
-        const windGustsMS = liveStationData.windgusts; // m/s (kan null zijn)
 
         switch (currentUnit) {
             case 'kn':
-                speedDisplay = (windSpeedMS * 1.94384).toFixed(1);
-                gustsDisplay = windGustsMS ? (windGustsMS * 1.94384).toFixed(1) : '--';
+                speedDisplay = Math.round(windSpeedMS * 1.94384);
                 break;
             case 'ms':
                 speedDisplay = windSpeedMS.toFixed(1);
-                gustsDisplay = windGustsMS ? windGustsMS.toFixed(1) : '--';
                 break;
             case 'bft':
                 speedDisplay = liveStationData.windspeedBft;
-                gustsDisplay = windGustsMS ? getBeaufort(windGustsMS * 3.6) : '--';
                 break;
             default:
-                speedDisplay = (windSpeedMS * 3.6).toFixed(1);
-                gustsDisplay = windGustsMS ? (windGustsMS * 3.6).toFixed(1) : '--';
+                speedDisplay = Math.round(windSpeedMS * 3.6);
         }
 
         // Windrichting van meetstation (in graden)
@@ -265,22 +338,26 @@ function updateCurrentConditions() {
         });
 
         document.getElementById('currentSpeed').textContent = speedDisplay;
-        document.getElementById('currentGusts').textContent = gustsDisplay;
     } else {
         // Fallback naar Open-Meteo voorspellingsdata
         const speed = windData.hourly.wind_speed_10m[currentIndex];
-        const gusts = windData.hourly.wind_gusts_10m[currentIndex];
         direction = windData.hourly.wind_direction_10m[currentIndex];
 
         document.getElementById('currentSpeed').textContent = formatWindSpeed(speed, false);
-        document.getElementById('currentGusts').textContent = formatWindSpeed(gusts, false);
 
         console.log('Geen meetstationdata - gebruik Open-Meteo voorspelling');
     }
 
     document.getElementById('windUnit').textContent = getCurrentUnitLabel();
-    document.getElementById('gustsUnit').textContent = getCurrentUnitLabel();
+
+    // Update windrichting met graden
     updateWindDirection(direction);
+
+    // Update golf info (van Open-Meteo marine API)
+    updateWaveInfo();
+
+    // Update getijden info
+    updateTideInfo();
 
     // Update gear advies
     updateGearAdvice();
@@ -662,35 +739,18 @@ function createForecastChart() {
 
     const ctx = document.getElementById('forecastChart').getContext('2d');
 
-    // Data voor daglicht uren (48 uur vooruit)
+    // Data arrays
     const labels = [];
     const speeds = [];
-    const gusts = [];
     const waves = [];
+    const barColors = [];
 
-    // Bouw sunrise/sunset lookup voor alle beschikbare dagen
-    const sunData = {};
-    if (windData.daily && windData.daily.sunrise && windData.daily.sunset) {
-        windData.daily.time.forEach((date, i) => {
-            sunData[date] = {
-                sunrise: new Date(windData.daily.sunrise[i]),
-                sunset: new Date(windData.daily.sunset[i])
-            };
-        });
-    }
-
-    // Helper: check of tijd binnen daglicht valt
-    function isDaylightHour(time) {
-        const dateStr = time.toISOString().slice(0, 10);
-        const dayData = sunData[dateStr];
-        if (!dayData) return true; // Geen data = tonen
-        return time >= dayData.sunrise && time <= dayData.sunset;
-    }
+    const now = new Date();
+    let nowIndex = -1;
 
     // Helper: maak label met dag indicator
     function makeLabel(time, prevTime) {
         const hour = time.getHours();
-        // Toon dag naam bij eerste punt van nieuwe dag of bij 0:00
         if (!prevTime || time.toDateString() !== prevTime.toDateString()) {
             const dayNames = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
             return `${dayNames[time.getDay()]} ${hour}:00`;
@@ -698,79 +758,79 @@ function createForecastChart() {
         return `${hour}:00`;
     }
 
-    // Gebruik RWS forecast indien beschikbaar, anders Open-Meteo
-    const useRWSForecast = rwsForecastData && rwsForecastData.data && rwsForecastData.data.length > 0;
-    const now = new Date();
-    let prevTime = null;
+    // Combineer RWS actueel (verleden) + RWS forecast (toekomst)
+    const allPoints = [];
 
-    if (useRWSForecast) {
-        // RWS forecast data gebruiken (48 uur)
-        let pointsAdded = 0;
-
-        for (const point of rwsForecastData.data) {
-            if (pointsAdded >= 48) break;
-
+    // Voeg actuele data toe (verleden, 48 uur terug)
+    if (rwsWindData && rwsWindData.data) {
+        for (const point of rwsWindData.data) {
             const time = new Date(point.tijdstip);
-
-            // Alleen toekomstige punten
-            if (time < now) continue;
-
-            // Check daglicht
-            if (!isDaylightHour(time)) continue;
-
-            labels.push(makeLabel(time, prevTime));
-            prevTime = time;
-
-            // RWS geeft windsnelheid in m/s
-            const speedMS = point.windsnelheid;
-            const speedKmh = speedMS * 3.6;
-
-            const speedValue = parseFloat(formatWindSpeed(speedKmh, false));
-            speeds.push(speedValue);
-            gusts.push(0); // RWS geeft geen vlagen in forecast
-
-            // Golven uit Open-Meteo
-            const timeDate = time.toISOString().slice(0, 10);
-            const openMeteoIndex = windData.hourly.time.findIndex(t =>
-                new Date(t).getHours() === time.getHours() &&
-                new Date(t).toISOString().slice(0, 10) === timeDate
-            );
-            if (openMeteoIndex >= 0 && marineData && marineData.hourly.wave_height[openMeteoIndex] !== null) {
-                waves.push(marineData.hourly.wave_height[openMeteoIndex]);
-            } else {
-                waves.push(null);
+            if (time <= now) {
+                allPoints.push({
+                    time: time,
+                    windsnelheid: point.windsnelheid,
+                    type: 'actueel'
+                });
             }
+        }
+    }
 
-            pointsAdded++;
+    // Voeg forecast data toe (toekomst)
+    if (rwsForecastData && rwsForecastData.data) {
+        for (const point of rwsForecastData.data) {
+            const time = new Date(point.tijdstip);
+            if (time > now) {
+                allPoints.push({
+                    time: time,
+                    windsnelheid: point.windsnelheid,
+                    type: 'forecast'
+                });
+            }
+        }
+    }
+
+    // Sorteer op tijd
+    allPoints.sort((a, b) => a.time - b.time);
+
+    // Filter op 48 uur terug tot 48 uur vooruit
+    const minTime = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const maxTime = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    const filteredPoints = allPoints.filter(p => p.time >= minTime && p.time <= maxTime);
+
+    // Bouw chart data
+    let prevTime = null;
+    for (let i = 0; i < filteredPoints.length; i++) {
+        const point = filteredPoints[i];
+        const time = point.time;
+
+        labels.push(makeLabel(time, prevTime));
+        prevTime = time;
+
+        // RWS geeft windsnelheid in m/s
+        const speedMS = point.windsnelheid;
+        const speedKmh = speedMS * 3.6;
+        const speedValue = parseFloat(formatWindSpeed(speedKmh, false));
+        speeds.push(speedValue);
+
+        // Kleur: verleden = gedimde kleur, toekomst = volle kleur
+        const isPast = time < now;
+        barColors.push(isPast ? 'rgba(34, 197, 94, 0.4)' : '#22c55e');
+
+        // Vind "nu" index (dichtstbijzijnde punt)
+        if (nowIndex === -1 && time >= now) {
+            nowIndex = i;
         }
 
-        console.log('Forecast chart met RWS data:', pointsAdded, 'punten');
-    } else {
-        // Fallback: Open-Meteo forecast (48 uur)
-        for (let i = currentIndex; i < currentIndex + 48 && i < windData.hourly.time.length; i++) {
-            const time = new Date(windData.hourly.time[i]);
-
-            // Check daglicht
-            if (!isDaylightHour(time)) continue;
-
-            labels.push(makeLabel(time, prevTime));
-            prevTime = time;
-
-            const speedKmh = windData.hourly.wind_speed_10m[i];
-            const gustsKmh = windData.hourly.wind_gusts_10m[i];
-
-            // Converteer naar huidige eenheid
-            const speedValue = parseFloat(formatWindSpeed(speedKmh, false));
-            const gustsValue = parseFloat(formatWindSpeed(gustsKmh, false));
-            speeds.push(speedValue);
-            // Vlagen als extra bovenop wind (alleen het verschil)
-            gusts.push(Math.max(0, gustsValue - speedValue));
-
-            if (marineData && marineData.hourly.wave_height[i] !== null) {
-                waves.push(marineData.hourly.wave_height[i]);
-            } else {
-                waves.push(null);
-            }
+        // Golf data van Open-Meteo
+        const timeDate = time.toISOString().slice(0, 10);
+        const openMeteoIndex = windData.hourly.time.findIndex(t =>
+            new Date(t).getHours() === time.getHours() &&
+            new Date(t).toISOString().slice(0, 10) === timeDate
+        );
+        if (openMeteoIndex >= 0 && marineData && marineData.hourly.wave_height[openMeteoIndex] !== null) {
+            waves.push(marineData.hourly.wave_height[openMeteoIndex]);
+        } else {
+            waves.push(null);
         }
     }
 
@@ -778,42 +838,21 @@ function createForecastChart() {
         forecastChart.destroy();
     }
 
-    // Check of we vlagen data hebben (niet allemaal 0)
-    const hasGusts = gusts.some(g => g > 0);
-    console.log('Forecast chart - useRWSForecast:', useRWSForecast, 'hasGusts:', hasGusts, 'gusts sample:', gusts.slice(0, 5));
-
     const datasets = [];
 
-    // Voeg vlagen alleen toe als we data hebben
-    if (hasGusts) {
-        datasets.push({
-            label: `Vlagen (${getCurrentUnitLabel()})`,
-            data: gusts,
-            backgroundColor: '#f97316',
-            borderColor: '#ea580c',
-            borderWidth: 1,
-            borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
-            stack: 'wind',
-            yAxisID: 'y',
-            order: 2
-        });
-    }
-
+    // Wind bars
     datasets.push({
         label: `Wind (${getCurrentUnitLabel()})`,
         data: speeds,
-        backgroundColor: '#22c55e',
-        borderColor: '#16a34a',
+        backgroundColor: barColors,
+        borderColor: barColors.map(c => c === '#22c55e' ? '#16a34a' : 'rgba(22, 163, 74, 0.4)'),
         borderWidth: 1,
-        borderRadius: hasGusts
-            ? { topLeft: 0, topRight: 0, bottomLeft: 3, bottomRight: 3 }
-            : { topLeft: 3, topRight: 3, bottomLeft: 3, bottomRight: 3 },
-        stack: 'wind',
+        borderRadius: 3,
         yAxisID: 'y',
         order: 1
     });
 
-    // Voeg golven toe als lijn
+    // Golven lijn
     if (waves.some(w => w !== null)) {
         datasets.push({
             label: 'Golven (m)',
@@ -830,6 +869,8 @@ function createForecastChart() {
             order: 0
         });
     }
+
+    console.log('Chart data:', { points: filteredPoints.length, nowIndex });
 
     forecastChart = new Chart(ctx, {
         type: 'bar',
@@ -1117,11 +1158,7 @@ function updateTime() {
 // Alle weergaven updaten
 function updateAllDisplays() {
     updateCurrentConditions();
-    updateTideDisplay();
-    updateWaveConditions();
-    updateTodaySummary();
     createForecastChart();
-    createHourlyDisplay();
     createWeeklyForecast();
 }
 
