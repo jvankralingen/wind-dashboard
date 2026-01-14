@@ -914,8 +914,15 @@ function createForecastChart() {
     const chartInner = document.getElementById('chartInner');
     const scrollContainer = document.getElementById('chartScrollContainer');
 
+    // Bereken padding zodat eerste en laatste uur ook op 1/5 positie kunnen staan
+    const containerWidth = scrollContainer ? scrollContainer.clientWidth : 400;
+    const scrollPadding = Math.round(containerWidth / 5); // 1/5 van container breedte
+    const scrollPaddingEnd = Math.round(containerWidth * 4 / 5); // 4/5 voor het eind
+
     if (chartInner) {
         chartInner.style.width = chartWidth + 'px';
+        chartInner.style.marginLeft = scrollPadding + 'px';
+        chartInner.style.marginRight = scrollPaddingEnd + 'px';
     }
 
     // Canvas afmetingen instellen
@@ -1055,13 +1062,10 @@ function createForecastChart() {
         }
     });
 
-    // Scroll naar "nu" op 1/5 van links (zodat je meer toekomst ziet)
+    // Scroll naar "nu" - door de margin staat nu op 1/5 van links
     if (scrollContainer && nowIndex >= 0) {
         setTimeout(() => {
-            const containerWidth = scrollContainer.clientWidth;
-            const targetPosition = containerWidth / 5; // 1/5 van links
-            const scrollTo = Math.max(0, (nowIndex * barWidth) - targetPosition);
-            scrollContainer.scrollLeft = scrollTo;
+            scrollContainer.scrollLeft = nowIndex * barWidth;
         }, 100);
     }
 
@@ -1086,10 +1090,9 @@ function handleChartScroll() {
     if (!scrollContainer || !chartPoints || chartPoints.length === 0) return;
 
     // Bereken welke bar op 1/5 van links staat (daar is de highlight)
+    // Door de marginLeft op de chart is scrollLeft=0 al bij het eerste datapunt
     const scrollLeft = scrollContainer.scrollLeft;
-    const containerWidth = scrollContainer.clientWidth;
-    const targetX = scrollLeft + containerWidth / 5; // 1/5 van links
-    const activeIndex = Math.round(targetX / barWidth);
+    const activeIndex = Math.round(scrollLeft / barWidth);
 
     // Begrens tot geldige index
     const pointIndex = Math.max(0, Math.min(activeIndex, chartPoints.length - 1));
