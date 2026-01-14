@@ -35,11 +35,11 @@ const BEAUFORT_SCALE = [
 
 // API URLs genereren voor een spot
 function getWindApiUrl(spot) {
-    return `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m&daily=sunrise,sunset&timezone=Europe%2FAmsterdam`;
+    return `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m&daily=sunrise,sunset&timezone=Europe%2FAmsterdam&past_days=2`;
 }
 
 function getMarineApiUrl(spot) {
-    return `https://marine-api.open-meteo.com/v1/marine?latitude=${spot.lat}&longitude=${spot.lon}&hourly=wave_height,wave_direction,wave_period&timezone=Europe%2FAmsterdam`;
+    return `https://marine-api.open-meteo.com/v1/marine?latitude=${spot.lat}&longitude=${spot.lon}&hourly=wave_height,wave_direction,wave_period&timezone=Europe%2FAmsterdam&past_days=2`;
 }
 
 // Conversie functies
@@ -758,31 +758,48 @@ function createForecastChart() {
         return `${hour}:00`;
     }
 
-    // Combineer RWS actueel (verleden) + RWS forecast (toekomst)
+    // Combineer Open-Meteo (verleden) + RWS forecast (toekomst)
     const allPoints = [];
+    const minTime = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const maxTime = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
-    // Voeg actuele data toe (verleden, 48 uur terug)
-    if (rwsWindData && rwsWindData.data) {
-        for (const point of rwsWindData.data) {
-            const time = new Date(point.tijdstip);
-            if (time <= now) {
+    // Voeg Open-Meteo data toe (verleden + vandaag)
+    if (windData && windData.hourly) {
+        for (let i = 0; i < windData.hourly.time.length; i++) {
+            const time = new Date(windData.hourly.time[i]);
+            if (time >= minTime && time <= now) {
+                // Open-Meteo is in km/h, converteer naar m/s voor consistentie
+                const speedKmh = windData.hourly.wind_speed_10m[i];
                 allPoints.push({
                     time: time,
-                    windsnelheid: point.windsnelheid,
-                    type: 'actueel'
+                    windsnelheid: speedKmh / 3.6, // naar m/s
+                    type: 'verleden'
                 });
             }
         }
     }
 
-    // Voeg forecast data toe (toekomst)
-    if (rwsForecastData && rwsForecastData.data) {
+    // Voeg RWS forecast data toe (toekomst), of fallback naar Open-Meteo
+    if (rwsForecastData && rwsForecastData.data && rwsForecastData.data.length > 0) {
         for (const point of rwsForecastData.data) {
             const time = new Date(point.tijdstip);
-            if (time > now) {
+            if (time > now && time <= maxTime) {
                 allPoints.push({
                     time: time,
-                    windsnelheid: point.windsnelheid,
+                    windsnelheid: point.windsnelheid, // al in m/s
+                    type: 'forecast'
+                });
+            }
+        }
+    } else if (windData && windData.hourly) {
+        // Fallback: gebruik Open-Meteo voor toekomst
+        for (let i = 0; i < windData.hourly.time.length; i++) {
+            const time = new Date(windData.hourly.time[i]);
+            if (time > now && time <= maxTime) {
+                const speedKmh = windData.hourly.wind_speed_10m[i];
+                allPoints.push({
+                    time: time,
+                    windsnelheid: speedKmh / 3.6,
                     type: 'forecast'
                 });
             }
@@ -792,10 +809,16 @@ function createForecastChart() {
     // Sorteer op tijd
     allPoints.sort((a, b) => a.time - b.time);
 
-    // Filter op 48 uur terug tot 48 uur vooruit
-    const minTime = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    const maxTime = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-    const filteredPoints = allPoints.filter(p => p.time >= minTime && p.time <= maxTime);
+    // Filter duplicaten (houd per uur 1 punt)
+    const filteredPoints = [];
+    let lastHour = null;
+    for (const point of allPoints) {
+        const hourKey = point.time.toISOString().slice(0, 13);
+        if (hourKey !== lastHour) {
+            filteredPoints.push(point);
+            lastHour = hourKey;
+        }
+    }
 
     // Bouw chart data
     let prevTime = null;
