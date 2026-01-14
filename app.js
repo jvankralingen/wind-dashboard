@@ -1109,7 +1109,7 @@ function handleChartScroll() {
     const titleEl = document.getElementById('conditionsTitle');
     const timeEl = document.getElementById('conditionsTime');
 
-    const isAtNow = Math.abs(pointIndex - nowIndex) <= 1;
+    const isAtNow = pointIndex === nowIndex;
 
     if (isAtNow) {
         // Bij "nu" - toon normale weergave
